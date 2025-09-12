@@ -22,6 +22,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      # Cache the pre-built image
+      - name: Cache LaTeX Docker Image
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: ghcr.io/xu-cheng/texlive-alpine
+
       # Step 2: Compile the LaTeX document into a PDF
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v4
