@@ -1,0 +1,43 @@
+# .github/workflows/main.yml
+name: Release PDF on Tag
+
+# This workflow runs automatically when you push a new tag that starts with 'v'
+# For example: v1.0, v1.1.0, v2.0-beta
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_and_release:
+    name: Build and Release PDF
+    runs-on: ubuntu-latest
+
+    # Grant permissions for the GITHUB_TOKEN to create a release
+    permissions:
+      contents: write
+
+    steps:
+      # Step 1: Check out the repository's code so the workflow can access it
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      # Step 2: Compile the LaTeX document into a PDF
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v4
+        with:
+          root_file: main.tex
+
+      - name: Rename PDF with Tag
+        run: |
+          mv main.pdf main-${{ github.ref_name }}.pdf
+
+      # Step 3: Create a GitHub Release and upload the compiled PDF as an asset
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+          --generate-notes \
+          --title "Release ${{ github.ref_name }}" \
+          main-${{ github.ref_name }}.pdf
