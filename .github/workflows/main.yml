@@ -69,23 +69,22 @@ jobs:
             # Non-interactive install profile
             cat > /tmp/texlive.profile <<'PROFILE'
           selected_scheme scheme-basic
+          TEXDIR __TL_ROOT__
           TEXMFCONFIG $HOME/.texlive/texmf-config
           TEXMFVAR $HOME/.texlive/texmf-var
           TEXMFHOME $HOME/texmf
-          TEXDIR __TL_ROOT__
+          TEXMFLOCAL __TL_ROOT__/texmf-local
+          TEXMFSYSCONFIG __TL_ROOT__/texmf-config
+          TEXMFSYSVAR __TL_ROOT__/texmf-var
           binary_x86_64-linux 1
-          binary_aarch64-linux 0
-          option_doc 0
-          option_src 0
-          option_autobackup 0
-          option_desktop_integration 0
-          option_file_assocs 0
-          option_path 0
-          option_post_code 0
-          option_write18_restricted 1
+          instopt_adjustrepo 1
+          instopt_write18_restricted 1
+          tlpdbopt_autobackup 0
+          tlpdbopt_desktop_integration 0
+          tlpdbopt_file_assocs 0
           tlpdbopt_install_docfiles 0
           tlpdbopt_install_srcfiles 0
-          tlpdbopt_autobackup 0
+          tlpdbopt_w32_multi_user 0
           PROFILE
 
             # Inject TL_ROOT into profile
