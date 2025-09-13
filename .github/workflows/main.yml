@@ -118,7 +118,7 @@ jobs:
           tlmgr option repository "${TL_MIRROR}"
           tlmgr update --self
           # Build helpers
-          tlmgr install latexmk texliveonfly
+          tlmgr install latexmk texliveonfly revtex
 
       # External tool discipline: detect needs before compile
       - name: Detect external tool needs
