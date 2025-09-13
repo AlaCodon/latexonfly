@@ -1,38 +1,209 @@
 # .github/workflows/main.yml
-name: Release PDF on Tag
+name: LaTeX CI (pure TeX Live, minimal, cached, on-demand)
 
-# This workflow runs automatically when you push a new tag that starts with 'v'
-# For example: v1.0, v1.1.0, v2.0-beta
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
+env:
+  ENTRY_TEX: main.tex
+  ENGINE: pdflatex
+  TL_ROOT: ${{ github.workspace }}/.tl # install TeX Live here (repo-local, cacheable)
+  # Mirror for installation and tlmgr updates
+  TL_MIRROR: https://mirror.ctan.org/systems/texlive/tlnet
+
+concurrency:
+  group: latex-ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build_and_release:
     name: Build and Release PDF
     runs-on: ubuntu-latest
-
-    # Grant permissions for the GITHUB_TOKEN to create a release
-    permissions:
-      contents: write
+    timeout-minutes: 30
 
     steps:
       # Step 1: Check out the repository's code so the workflow can access it
       - name: Check out repository
-        uses: actions/checkout@v5
-
-      # Step 2: Compile the LaTeX document into a PDF
-      - name: Compile LaTeX document
-        uses: xu-cheng/latex-action@v4
+        uses: actions/checkout@v5.0.0
         with:
-          root_file: main.tex
+          fetch-depth: 0
 
-      - name: Rename PDF with Tag
+      # Cache the TeX Live install + user trees so installed packages persist
+      - name: Restore TeX Live cache
+        uses: actions/cache@v4.2.4
+        with:
+          path: |
+            ${{ env.TL_ROOT }}
+            ${{ runner.temp }}/texlive-installer
+            $HOME/.texlive*
+            $HOME/texmf
+          key: texlive-${{ runner.os }}-sources-${{ hashFiles('**/*.tex', '**/*.sty', '**/*.cls', '**/*.bib') }}
+          restore-keys: |
+            texlive-${{ runner.os }}-sources-
+
+      - name: Install TeX Live (scheme-basic) if missing
+        shell: bash
         run: |
-          mv main.pdf main-${{ github.ref_name }}.pdf
+          set -euxo pipefail
 
-      # Step 3: Create a GitHub Release and upload the compiled PDF as an asset
+          # Determine bin dir (if already installed)
+          if [ -d "${TL_ROOT}/bin" ] && [ -n "$(ls -A "${TL_ROOT}/bin" 2>/dev/null || true)" ]; then
+            TL_BIN_DIR=$(find "${TL_ROOT}/bin" -mindepth 1 -maxdepth 1 -type d | head -n1)
+          else
+            TL_BIN_DIR=""
+          fi
+
+          if [ -x "${TL_BIN_DIR}/tlmgr" ]; then
+            echo "TeX Live already installed at ${TL_ROOT}"
+          else
+            echo "Installing TeX Live to ${TL_ROOT}"
+            mkdir -p "${RUNNER_TEMP}/texlive-installer"
+            cd "${RUNNER_TEMP}/texlive-installer"
+            curl -fsSL ${TL_MIRROR}/install-tl-unx.tar.gz | tar -xz --strip-components=1
+
+            # Non-interactive install profile
+            cat > /tmp/texlive.profile <<'PROFILE'
+          selected_scheme scheme-basic
+          TEXMFCONFIG $HOME/.texlive/texmf-config
+          TEXMFVAR $HOME/.texlive/texmf-var
+          TEXMFHOME $HOME/texmf
+          TEXDIR __TL_ROOT__
+          binary_x86_64-linux 1
+          binary_aarch64-linux 0
+          option_doc 0
+          option_src 0
+          option_autobackup 0
+          option_desktop_integration 0
+          option_file_assocs 0
+          option_path 0
+          option_post_code 0
+          option_write18_restricted 1
+          tlpdbopt_install_docfiles 0
+          tlpdbopt_install_srcfiles 0
+          tlpdbopt_autobackup 0
+          PROFILE
+
+            # Inject TL_ROOT into profile
+            sed -i "s#__TL_ROOT__#${TL_ROOT}#g" /tmp/texlive.profile
+
+            # Run the installer
+            ./install-tl -profile /tmp/texlive.profile
+
+            # Discover bin dir after installation
+            TL_BIN_DIR=$(find "${TL_ROOT}/bin" -mindepth 1 -maxdepth 1 -type d | head -n1)
+          fi
+
+          # Add TeX Live to PATH for this job
+          echo "${TL_BIN_DIR}" >> "$GITHUB_PATH"
+
+      - name: Bootstrap tlmgr and minimal tools
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tlmgr option repository "${TL_MIRROR}"
+          tlmgr update --self
+          # Build helpers
+          tlmgr install latexmk texliveonfly
+
+      # External tool discipline: detect needs before compile
+      - name: Detect external tool needs
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          NEED_BIBER="false"
+          NEED_GLOSS="false"
+          NEED_MINTED="false"
+          NEED_TIKZEXT="false"
+
+          # Search only relevant tree to reduce noise
+          SRC_DIR="."
+          grep -R -nE '\\usepackage(\[[^]]*\])?{biblatex}' "$SRC_DIR" >/dev/null 2>&1 && NEED_BIBER="true"
+          grep -R -nE '\\usepackage(\[[^]]*\])?{glossaries(-extra)?}|\\makeglossaries|\\printglossary' "$SRC_DIR" >/dev/null 2>&1 && NEED_GLOSS="true"
+          grep -R -nE '\\usepackage(\[[^]]*\])?{minted}' "$SRC_DIR" >/dev/null 2>&1 && NEED_MINTED="true"
+          grep -R -nE '\\tikzexternalize|\\usetikzlibrary\{[^}]*external[^}]*\}' "$SRC_DIR" >/dev/null 2>&1 && NEED_TIKZEXT="true"
+
+          echo "NEED_BIBER=$NEED_BIBER"       >> "$GITHUB_OUTPUT"
+          echo "NEED_GLOSS=$NEED_GLOSS"       >> "$GITHUB_OUTPUT"
+          echo "NEED_MINTED=$NEED_MINTED"     >> "$GITHUB_OUTPUT"
+          echo "NEED_TIKZEXT=$NEED_TIKZEXT"   >> "$GITHUB_OUTPUT"
+
+      - name: Install external tools as needed
+        if: steps.detect.outputs.NEED_BIBER == 'true' || steps.detect.outputs.NEED_GLOSS == 'true' || steps.detect.outputs.NEED_MINTED == 'true'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ "${{ steps.detect.outputs.NEED_BIBER }}" = "true" ]; then
+            tlmgr install biber biblatex
+          fi
+          if [ "${{ steps.detect.outputs.NEED_GLOSS }}" = "true" ]; then
+            tlmgr install glossaries xindy makeindex || tlmgr install glossaries xindy
+          fi
+          if [ "${{ steps.detect.outputs.NEED_MINTED }}" = "true" ]; then
+            tlmgr install minted
+            python3 -m pip install --user --upgrade pip Pygments
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Build PDF (on-demand packages)
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          case "${ENGINE}" in
+            pdflatex) LMK_FLAG="-pdf" ;;
+            xelatex)  LMK_FLAG="-pdfxe" ;;
+            lualatex) LMK_FLAG="-pdflua" ;;
+            *) echo "Unknown ENGINE=${ENGINE}"; exit 1 ;;
+          esac
+
+
+          # Default to no shell-escape; enable only for minted or tikz externalization
+          SHELL_ESCAPE=""
+          if [ "${{ steps.detect.outputs.NEED_MINTED }}" = "true" ] || [ "${{ steps.detect.outputs.NEED_TIKZEXT }}" = "true" ]; then
+            SHELL_ESCAPE="-shell-escape"
+          fi
+
+          # texliveonfly installs missing packages via tlmgr during the build
+          texliveonfly -c latexmk -a "${LMK_FLAG} -interaction=nonstopmode -file-line-error -halt-on-error ${SHELL_ESCAPE}" "${ENTRY_TEX}"
+
+          OUT_PDF="${ENTRY_TEX%.tex}.pdf"
+          test -f "$OUT_PDF" || (echo "Output PDF not found: $OUT_PDF" && exit 2)
+          echo "OUT_PDF=${OUT_PDF}" >> "$GITHUB_ENV"
+
+      - name: Record installed TeX packages (optional, for reproducibility)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tlmgr info --only-installed --data name | sort > texlive.packages.txt || true
+          wc -l texlive.packages.txt || true
+
+      - name: Rename PDFs with tag
+      # Only run this on tag builds
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euxo pipefail
+          TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          TAG_SAFE="${TAG//\//-}"
+
+          mkdir -p dist
+          shopt -s nullglob
+          for f in ./*.pdf; do
+            bn="$(basename "$f")"
+            base="${bn%.pdf}"
+            cp "$f" "dist/${base}-${TAG_SAFE}.pdf"
+          done
+
+          # Expose for the next step
+          echo "RELEASE_FILES=dist/*.pdf" >> "$GITHUB_ENV"
+
+
+      # Create a GitHub Release and upload the compiled PDF as an asset
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,4 +211,4 @@ jobs:
           gh release create ${{ github.ref_name }} \
           --generate-notes \
           --title "Release ${{ github.ref_name }}" \
-          main-${{ github.ref_name }}.pdf
+          ${{ env.RELEASE_FILES }}
