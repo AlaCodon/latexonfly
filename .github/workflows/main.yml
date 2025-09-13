@@ -181,8 +181,8 @@ jobs:
 
           # texliveonfly installs missing packages via tlmgr during the build
           latexmk ${LMK_FLAG} -f\
-            -interaction=nonstopmode -file-line-error \
-            -pdflatex="texliveonfly -q -c ${ENGINE} ${SHELL_ESCAPE} %O %S" \
+            -interaction=nonstopmode -file-line-error ${SHELL_ESCAPE}\
+            -pdflatex='texliveonfly -c ${ENGINE} -a "%O" %S'\
             "$ENTRY_TEX"
 
           OUT_PDF="${ENTRY_TEX%.tex}.pdf"
