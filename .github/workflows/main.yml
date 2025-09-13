@@ -180,7 +180,10 @@ jobs:
           fi
 
           # texliveonfly installs missing packages via tlmgr during the build
-          texliveonfly -c latexmk -a "${LMK_FLAG} -interaction=nonstopmode -file-line-error -halt-on-error ${SHELL_ESCAPE}" "${ENTRY_TEX}"
+          latexmk ${LMK_FLAG} -f\
+            -interaction=nonstopmode -file-line-error \
+            -pdflatex="texliveonfly -q -c ${ENGINE} ${SHELL_ESCAPE} %O %S" \
+            "$ENTRY_TEX"
 
           OUT_PDF="${ENTRY_TEX%.tex}.pdf"
           test -f "$OUT_PDF" || (echo "Output PDF not found: $OUT_PDF" && exit 2)
