@@ -101,6 +101,17 @@ jobs:
           # Add TeX Live to PATH for this job
           echo "${TL_BIN_DIR}" >> "$GITHUB_PATH"
 
+      - name: Upload TeX Live profile(s)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
+          path: |
+            /tmp/texlive.profile
+            /tmp/texlive.profile.resolved
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Bootstrap tlmgr and minimal tools
         shell: bash
         run: |
