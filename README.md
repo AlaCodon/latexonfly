@@ -1,6 +1,60 @@
-# Reusable LaTeX CI Workflow
+# LaTeX Build Action
 
-This repository provides a reusable GitHub Actions workflow for building LaTeX documents with automatic package management, caching, and release automation.
+This repository provides both a reusable GitHub Actions workflow and a GitHub Action for building LaTeX documents with automatic package management, caching, and release automation.
+
+## 📦 Using as a GitHub Action
+
+You can use this as a GitHub Action in your workflow:
+
+```yaml
+name: Build LaTeX Documents
+
+on:
+  push:
+    branches: [main, release]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Build LaTeX documents
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "main.tex"
+          engine: "pdflatex"
+          create_release: true
+          release_tag_prefix: "v"
+```
+
+## 🔄 Using as a Reusable Workflow
+
+You can also use this as a reusable workflow:
+
+```yaml
+name: Build LaTeX Documents
+
+on:
+  push:
+    branches: [main, release]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
+    permissions:
+      contents: write
+    with:
+      entry_tex: "main.tex"
+      engine: "pdflatex"
+```
 
 ## Features
 
@@ -13,9 +67,36 @@ This repository provides a reusable GitHub Actions workflow for building LaTeX d
 - 🔧 **Highly configurable** inputs for different project needs
 - 🛠️ **Build artifact support** for debugging
 
-## Quick Start
+## Advanced Examples
 
-To use this reusable workflow in your LaTeX project, create a workflow file in your repository at `.github/workflows/latex-ci.yml`:
+### Using as GitHub Action with Multiple Outputs
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build LaTeX
+        id: latex
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "main.tex"
+          engine: "pdflatex"
+          
+      - name: Use outputs
+        run: |
+          echo "Generated PDFs: ${{ steps.latex.outputs.pdf_files }}"
+          echo "Release tag: ${{ steps.latex.outputs.release_tag }}"
+          echo "Release URL: ${{ steps.latex.outputs.release_url }}"
+```
+
+## Quick Start (Reusable Workflow)
+
+For backward compatibility, you can still use this as a reusable workflow in your LaTeX project by creating a workflow file at `.github/workflows/latex-ci.yml`:
 
 ```yaml
 name: Build LaTeX Documents
@@ -220,13 +301,27 @@ permissions:
 
 ## Contributing
 
-To improve this reusable workflow:
+To improve this action and reusable workflow:
 
 1. Fork this repository
 2. Create a feature branch
 3. Test your changes with the example workflows
 4. Submit a pull request
 
+## GitHub Actions Marketplace
+
+This action is available on the GitHub Actions Marketplace as `AlaCodon/latexonfly`. You can use it in your workflows by referencing:
+
+```yaml
+- uses: AlaCodon/latexonfly@main
+```
+
+For production use, we recommend pinning to a specific version:
+
+```yaml
+- uses: AlaCodon/latexonfly@v1.0.0
+```
+
 ## License
 
-This workflow is provided under the same license as the repository. See the repository's license file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

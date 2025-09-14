@@ -1,0 +1,459 @@
+name: 'LaTeX Build Action'
+description: 'Build LaTeX documents with automatic package management, caching, and release automation'
+author: 'AlaCodon'
+
+branding:
+  icon: 'file-text'
+  color: 'blue'
+
+inputs:
+  # LaTeX document configuration
+  entry_tex:
+    description: 'Main LaTeX file to compile (e.g., main.tex)'
+    required: false
+    default: 'main.tex'
+
+  engine:
+    description: 'LaTeX engine to use (pdflatex, xelatex, lualatex)'
+    required: false
+    default: 'pdflatex'
+
+  # Build configuration
+  working_directory:
+    description: 'Working directory containing LaTeX files'
+    required: false
+    default: '.'
+
+  texlive_scheme:
+    description: 'TeX Live scheme to install (basic, minimal, full)'
+    required: false
+    default: 'basic'
+
+  # Release configuration
+  create_release:
+    description: 'Whether to create a GitHub release'
+    required: false
+    default: 'true'
+
+  release_tag_prefix:
+    description: 'Prefix for release tags'
+    required: false
+    default: 'rel'
+
+  push_to_releases_branch:
+    description: 'Whether to push PDFs to releases branch'
+    required: false
+    default: 'true'
+
+  releases_branch_name:
+    description: 'Name of the releases branch'
+    required: false
+    default: 'releases'
+
+  # Advanced configuration
+  texlive_mirror:
+    description: 'TeX Live mirror URL'
+    required: false
+    default: 'https://mirror.ctan.org/systems/texlive/tlnet'
+
+  timeout_minutes:
+    description: 'Job timeout in minutes'
+    required: false
+    default: '30'
+
+  cache_key_suffix:
+    description: 'Additional suffix for cache key'
+    required: false
+    default: ''
+
+  # Output configuration
+  artifact_name:
+    description: 'Name for PDF artifacts'
+    required: false
+    default: 'latex-pdfs'
+
+  keep_build_deps:
+    description: 'Whether to upload build deps for debugging'
+    required: false
+    default: 'false'
+
+  keep_build_artifacts:
+    description: 'Whether to upload build artifacts for debugging'
+    required: false
+    default: 'false'
+
+outputs:
+  pdf_files:
+    description: 'Generated PDF files'
+    value: ${{ steps.build.outputs.pdf_files }}
+
+  release_tag:
+    description: 'Created release tag'
+    value: ${{ steps.meta.outputs.tag }}
+
+  release_url:
+    description: 'URL of created release'
+    value: ${{ steps.release.outputs.url }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Step 1: Set up environment variables
+    - name: Set up environment variables
+      shell: bash
+      run: |
+        echo "ENTRY_TEX=${{ inputs.entry_tex }}" >> $GITHUB_ENV
+        echo "ENGINE=${{ inputs.engine }}" >> $GITHUB_ENV
+        echo "TL_ROOT=${{ github.workspace }}/.tl" >> $GITHUB_ENV
+        echo "TL_MIRROR=${{ inputs.texlive_mirror }}" >> $GITHUB_ENV
+        echo "WORKING_DIR=${{ inputs.working_directory }}" >> $GITHUB_ENV
+
+    # Cache the TeX Live install + user trees
+    - name: Restore TeX Live cache
+      uses: actions/cache@v4.2.4
+      with:
+        path: |
+          ${{ env.TL_ROOT }}
+          ${{ runner.temp }}/texlive-installer
+          ~/.texlive*
+          ~/texmf
+        key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ hashFiles(format('{0}/**/*.tex', inputs.working_directory), format('{0}/**/*.sty', inputs.working_directory), format('{0}/**/*.cls', inputs.working_directory), format('{0}/**/*.bib', inputs.working_directory)) }}${{ inputs.cache_key_suffix }}
+
+    # Install TeX Live if not cached
+    - name: Install TeX Live
+      shell: bash
+      run: |
+        set -euxo pipefail
+        
+        # Check if TeX Live is already installed and cached
+        if [ -d "${TL_ROOT}" ] && [ -n "$(find "${TL_ROOT}/bin" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || true)" ]; then
+          echo "TeX Live found in cache"
+          TL_BIN_DIR=$(find "${TL_ROOT}/bin" -mindepth 1 -maxdepth 1 -type d | head -n1)
+        else
+          echo "Installing TeX Live from scratch"
+          
+          # Download and extract installer
+          mkdir -p "${{ runner.temp }}/texlive-installer"
+          cd "${{ runner.temp }}/texlive-installer"
+          
+          if [ ! -f install-tl-unx.tar.gz ]; then
+            wget -q "${{ inputs.texlive_mirror }}/install-tl-unx.tar.gz"
+            tar -xzf install-tl-unx.tar.gz --strip-components=1
+          fi
+          
+          # Create profile for unattended installation
+          cat > /tmp/texlive.profile <<EOF
+        TEXDIR ${{ env.TL_ROOT }}
+        TEXMFCONFIG ~/.texlive*/texmf-config
+        TEXMFHOME ~/texmf
+        TEXMFLOCAL ${{ env.TL_ROOT }}/texmf-local
+        TEXMFSYSCONFIG ${{ env.TL_ROOT }}/texmf-config
+        TEXMFSYSVAR ${{ env.TL_ROOT }}/texmf-var
+        TEXMFVAR ~/.texlive*/texmf-var
+        binary_x86_64-linux 1
+        collection-basic 1
+        collection-latex 1
+        collection-fontsrecommended 1
+        instopt_adjustpath 0
+        instopt_adjustrepo 1
+        instopt_letter 0
+        instopt_portable 0
+        instopt_write18_restricted 1
+        tlpdbopt_autobackup 1
+        tlpdbopt_backupdir tlpkg/backups
+        tlpdbopt_create_formats 1
+        tlpdbopt_desktop_integration 1
+        tlpdbopt_file_assocs 1
+        tlpdbopt_generate_updmap 0
+        tlpdbopt_install_docfiles 0
+        tlpdbopt_install_srcfiles 0
+        tlpdbopt_post_code 1
+        tlpdbopt_sys_bin /usr/local/bin
+        tlpdbopt_sys_info /usr/local/share/info
+        tlpdbopt_sys_man /usr/local/share/man
+        tlpdbopt_w32_multi_user 1
+        EOF
+
+          # Adjust profile based on scheme
+          case "${{ inputs.texlive_scheme }}" in
+            minimal)
+              sed -i '/^collection-/d' /tmp/texlive.profile
+              echo "collection-basic 1" >> /tmp/texlive.profile
+              ;;
+            basic)
+              # Already configured for basic
+              ;;
+            full)
+              cat >> /tmp/texlive.profile <<EOF
+        collection-bibtexextra 1
+        collection-binextra 1
+        collection-context 1
+        collection-fontsextra 1
+        collection-formatsextra 1
+        collection-games 1
+        collection-humanities 1
+        collection-langarabic 1
+        collection-langchinese 1
+        collection-langcjk 1
+        collection-langcyrillic 1
+        collection-langczechslovak 1
+        collection-langenglish 1
+        collection-langeuropean 1
+        collection-langfrench 1
+        collection-langgerman 1
+        collection-langgreek 1
+        collection-langitalian 1
+        collection-langjapanese 1
+        collection-langkorean 1
+        collection-langother 1
+        collection-langpolish 1
+        collection-langportuguese 1
+        collection-langspanish 1
+        collection-latexextra 1
+        collection-latexrecommended 1
+        collection-luatex 1
+        collection-mathscience 1
+        collection-metapost 1
+        collection-music 1
+        collection-pictures 1
+        collection-plaingeneric 1
+        collection-pstricks 1
+        collection-publishers 1
+        collection-texworks 1
+        collection-wintools 1
+        collection-xetex 1
+        EOF
+              ;;
+          esac
+          
+          # Run installer
+          ./install-tl -profile /tmp/texlive.profile
+          
+          # Discover bin dir after installation
+          TL_BIN_DIR=$(find "${TL_ROOT}/bin" -mindepth 1 -maxdepth 1 -type d | head -n1)
+        fi
+        
+        # Add TeX Live to PATH for this action
+        echo "${TL_BIN_DIR}" >> "$GITHUB_PATH"
+
+    - name: Upload TeX Live profile(s)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
+        path: |
+          /tmp/texlive.profile
+          /tmp/texlive.profile.resolved
+        if-no-files-found: warn
+        retention-days: 7
+
+    - name: Bootstrap tlmgr and minimal tools
+      shell: bash
+      run: |
+        set -euxo pipefail
+        tlmgr option repository "${{ env.TL_MIRROR }}"
+        tlmgr update --self --all
+        # Build helpers
+        tlmgr install latexmk texliveonfly
+
+    # External tool discipline: detect needs before compile
+    - name: Detect external tool needs
+      id: detect
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        set -euo pipefail
+        NEED_BIBER="false"
+        NEED_GLOSS="false"
+        NEED_MINTED="false"
+        NEED_TIKZEXT="false"
+
+        # Search only relevant tree to reduce noise
+        SRC_DIR="."
+        grep -R -nE '\\usepackage(\[[^]]*\])?{biblatex}' "$SRC_DIR" >/dev/null 2>&1 && NEED_BIBER="true" || true
+        grep -R -nE '\\usepackage(\[[^]]*\])?{glossaries(-extra)?}|\\makeglossaries|\\printglossary' "$SRC_DIR" >/dev/null 2>&1 && NEED_GLOSS="true" || true
+        grep -R -nE '\\usepackage(\[[^]]*\])?{minted}' "$SRC_DIR" >/dev/null 2>&1 && NEED_MINTED="true" || true
+        grep -R -nE '\\tikzexternalize|\\usetikzlibrary\{[^}]*external[^}]*\}' "$SRC_DIR" >/dev/null 2>&1 && NEED_TIKZEXT="true" || true
+
+        echo "NEED_BIBER=$NEED_BIBER"       >> "$GITHUB_OUTPUT"
+        echo "NEED_GLOSS=$NEED_GLOSS"       >> "$GITHUB_OUTPUT"
+        echo "NEED_MINTED=$NEED_MINTED"     >> "$GITHUB_OUTPUT"
+        echo "NEED_TIKZEXT=$NEED_TIKZEXT"   >> "$GITHUB_OUTPUT"
+
+    - name: Install external tools as needed
+      if: steps.detect.outputs.NEED_BIBER == 'true' || steps.detect.outputs.NEED_GLOSS == 'true' || steps.detect.outputs.NEED_MINTED == 'true'
+      shell: bash
+      run: |
+        set -euxo pipefail
+        if [ "${{ steps.detect.outputs.NEED_BIBER }}" = "true" ]; then
+          tlmgr install biber biblatex
+        fi
+        if [ "${{ steps.detect.outputs.NEED_GLOSS }}" = "true" ]; then
+          tlmgr install glossaries xindy makeindex || tlmgr install glossaries xindy
+        fi
+        if [ "${{ steps.detect.outputs.NEED_MINTED }}" = "true" ]; then
+          tlmgr install minted
+          python3 -m pip install --user --upgrade pip Pygments
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        fi
+
+    - name: Build PDF (on-demand packages)
+      id: build
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        set -euxo pipefail
+
+        case "${ENGINE}" in
+          pdflatex) LMK_FLAG="-pdf" ;;
+          xelatex)  LMK_FLAG="-pdfxe" ;;
+          lualatex) LMK_FLAG="-pdflua" ;;
+          *) echo "Unknown ENGINE=${ENGINE}"; exit 1 ;;
+        esac
+
+        # Default to no shell-escape; enable only for minted or tikz externalization
+        SHELL_ESCAPE=""
+        if [ "${{ steps.detect.outputs.NEED_MINTED }}" = "true" ] || [ "${{ steps.detect.outputs.NEED_TIKZEXT }}" = "true" ]; then
+          SHELL_ESCAPE="-shell-escape"
+        fi
+
+        # texliveonfly installs missing packages via tlmgr during the build
+        latexmk ${LMK_FLAG} -f \
+          -interaction=nonstopmode -file-line-error ${SHELL_ESCAPE} \
+          -pdflatex='texliveonfly -c ${ENGINE} -a "%O" %S' \
+          "${ENTRY_TEX}"
+
+        OUT_PDF="${ENTRY_TEX%.tex}.pdf"
+        test -f "$OUT_PDF" || (echo "Output PDF not found: $OUT_PDF" && exit 2)
+
+        # Set outputs
+        echo "OUT_PDF=${OUT_PDF}" >> "$GITHUB_ENV"
+
+        # Find all generated PDFs
+        PDF_FILES=$(find . -name "*.pdf" -type f | tr '\n' ' ')
+        echo "pdf_files=${PDF_FILES}" >> "$GITHUB_OUTPUT"
+
+    - name: Record installed TeX packages (for reproducibility)
+      if: inputs.keep_build_deps == 'true'
+      shell: bash
+      run: |
+        set -euxo pipefail
+        tlmgr info --only-installed --data name | sort > texlive.packages.txt || true
+        wc -l texlive.packages.txt || true
+
+    - name: Upload build deps
+      if: inputs.keep_build_deps == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}-build-deps
+        path: |
+          texlive.packages.txt
+        if-no-files-found: ignore
+        retention-days: 7
+
+    - name: Upload build artifacts
+      if: inputs.keep_build_artifacts == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}-build-artifacts
+        path: |
+          ${{ inputs.working_directory }}/*.log
+          ${{ inputs.working_directory }}/*.aux
+          ${{ inputs.working_directory }}/*.fls
+          ${{ inputs.working_directory }}/*.fdb_latexmk
+        if-no-files-found: ignore
+        retention-days: 7
+
+    - name: Compute release metadata (title and tag)
+      if: inputs.create_release == 'true'
+      id: meta
+      shell: bash
+      run: |
+        TITLE="$(git log -1 --pretty=%s)"   # first line only
+        echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+        TAG="${{ inputs.release_tag_prefix }}-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+        echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+    - name: Prepare release artifacts
+      if: inputs.create_release == 'true'
+      env:
+        TAG_NAME: ${{ steps.meta.outputs.tag }}
+      working-directory: ${{ inputs.working_directory }}
+      shell: bash
+      run: |
+        set -euxo pipefail
+        mkdir -p ../dist
+        shopt -s nullglob
+        for f in ./*.pdf; do
+          if [ -f "$f" ]; then
+            bn="$(basename "$f")"
+            base="${bn%.pdf}"
+            cp "$f" "../dist/${base}-${TAG_NAME}.pdf"
+          fi
+        done
+
+        # Count and list files
+        cd ../dist
+        if ls *.pdf 1> /dev/null 2>&1; then
+          echo "RELEASE_FILES=$(ls *.pdf | tr '\n' ' ')" >> "$GITHUB_ENV"
+          echo "Generated release files:"
+          ls -la *.pdf
+        else
+          echo "No PDF files found for release"
+          echo "RELEASE_FILES=" >> "$GITHUB_ENV"
+        fi
+
+    - name: Upload PDF artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ${{ inputs.working_directory }}/*.pdf
+        if-no-files-found: warn
+        retention-days: 30
+
+    - name: Create GitHub Release
+      if: inputs.create_release == 'true' && env.RELEASE_FILES != ''
+      id: release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        TAG_NAME: ${{ steps.meta.outputs.tag }}
+        RELEASE_NAME: ${{ steps.meta.outputs.title }}
+      shell: bash
+      run: |
+        cd dist
+        RELEASE_URL=$(gh release create "$TAG_NAME" \
+          --title "$RELEASE_NAME" \
+          --target "$GITHUB_SHA" \
+          --generate-notes \
+          --latest \
+          *.pdf | tail -n1)
+        echo "url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Push PDF to releases branch
+      if: inputs.push_to_releases_branch == 'true' && env.RELEASE_FILES != ''
+      env:
+        TAG_NAME: ${{ steps.meta.outputs.tag }}
+        RELEASE_NAME: ${{ steps.meta.outputs.title }}
+        BRANCH_NAME: ${{ inputs.releases_branch_name }}
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
+          git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
+          git switch "$BRANCH_NAME"
+        else
+          git checkout --orphan "$BRANCH_NAME"
+          git rm -rf . 2>/dev/null || true
+          find . -maxdepth 1 -type f -delete 2>/dev/null || true
+        fi
+
+        cp dist/*.pdf ./ 2>/dev/null || true
+        if ls *.pdf 1> /dev/null 2>&1; then
+          git add *.pdf
+          git commit -m "$TAG_NAME: $RELEASE_NAME"
+          git push origin HEAD:"$BRANCH_NAME"
+        else
+          echo "No PDF files to push to releases branch"
+        fi
