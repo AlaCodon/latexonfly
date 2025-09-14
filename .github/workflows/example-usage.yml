@@ -1,0 +1,41 @@
+# Example usage of the reusable LaTeX CI workflow
+# This file shows how to use the reusable workflow from another repository
+# Place this in .github/workflows/ in your LaTeX project repository
+
+name: Build LaTeX Documents
+
+on:
+  push:
+    branches:
+      - main
+      - release
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_latex:
+    name: Build and Release PDF
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    with:
+      # Basic configuration
+      entry_tex: "main.tex"                    # Your main LaTeX file
+      engine: "pdflatex"                       # LaTeX engine (pdflatex, xelatex, lualatex)
+      working_directory: "."                   # Directory containing LaTeX files
+      
+      # Release configuration  
+      create_release: true                     # Create GitHub releases
+      release_tag_prefix: "v"                 # Prefix for release tags
+      push_to_releases_branch: true           # Push PDFs to releases branch
+      releases_branch_name: "releases"        # Name of releases branch
+      
+      # Advanced configuration
+      texlive_scheme: "basic"                 # TeX Live scheme (basic, minimal, full)
+      timeout_minutes: 30                     # Job timeout
+      artifact_name: "my-project-pdfs"       # Name for PDF artifacts
+      keep_build_artifacts: false            # Upload build logs for debugging
+      keep_build_deps: false                 # Upload build deps for debugging
+      
+    # The reusable workflow needs write permissions for releases
+    permissions:
+      contents: write

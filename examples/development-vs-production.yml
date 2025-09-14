@@ -1,0 +1,49 @@
+# examples/development-vs-production.yml
+# Example: Different configurations for development and production builds
+# Development builds: Fast, no releases, with debugging
+# Production builds: Full features, releases, optimized
+
+name: LaTeX CI - Development vs Production
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Development build for feature branches and PRs
+  development-build:
+    name: Development Build
+    if: github.ref != 'refs/heads/main'
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    with:
+      entry_tex: "main.tex"
+      engine: "pdflatex"
+      texlive_scheme: "basic"             # Faster installation
+      create_release: false               # No releases for dev builds
+      push_to_releases_branch: false      # No branch pollution
+      keep_build_artifacts: true          # Keep logs for debugging
+      artifact_name: "dev-build-pdf"
+      cache_key_suffix: "-dev"            # Separate cache for dev
+      timeout_minutes: 20                 # Shorter timeout for quick feedback
+    permissions:
+      contents: write
+  
+  # Production build for main branch
+  production-build:
+    name: Production Build
+    if: github.ref == 'refs/heads/main'
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    with:
+      entry_tex: "main.tex"
+      engine: "pdflatex"
+      texlive_scheme: "full"              # Full TeX Live for production
+      create_release: true                # Create official releases
+      release_tag_prefix: "v"             # Version tags
+      push_to_releases_branch: true       # Maintain releases branch
+      keep_build_artifacts: false         # Clean production artifacts
+      artifact_name: "production-pdf"
+      timeout_minutes: 60                 # Allow time for full build
+    permissions:
+      contents: write

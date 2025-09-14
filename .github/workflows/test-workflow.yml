@@ -1,0 +1,24 @@
+name: Test Reusable LaTeX CI
+
+on:
+  push:
+    branches:
+      - main
+      - copilot/**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test_reusable_workflow:
+    name: Test Reusable Workflow
+    uses: ./.github/workflows/reusable-latex-ci.yml
+    with:
+      entry_tex: "main.tex"
+      engine: "pdflatex"
+      create_release: false  # Don't create releases for tests
+      push_to_releases_branch: false  # Don't push to releases branch for tests
+      artifact_name: "test-latex-pdf"
+      keep_build_artifacts: true  # Keep artifacts for debugging
+    permissions:
+      contents: write

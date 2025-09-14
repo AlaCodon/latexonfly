@@ -1,0 +1,77 @@
+# examples/multi-document-project.yml
+# Example: Building multiple documents from a single repository
+# Use this when you have thesis + slides, or multiple papers
+
+name: Build All Documents
+
+on:
+  push:
+    branches: [main, release]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-thesis:
+    name: Build Thesis
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    with:
+      entry_tex: "thesis.tex"
+      working_directory: "thesis"
+      engine: "xelatex"                   # Thesis often needs XeLaTeX for fonts
+      texlive_scheme: "full"              # Thesis may need many packages
+      release_tag_prefix: "thesis"        # Tag releases as thesis-YYYYMMDD-...
+      artifact_name: "thesis-pdf"
+      timeout_minutes: 45                 # Longer timeout for complex thesis
+    permissions:
+      contents: write
+  
+  build-slides:
+    name: Build Presentation Slides
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    with:
+      entry_tex: "slides.tex"
+      working_directory: "slides"
+      engine: "pdflatex"                  # Slides usually fine with pdflatex
+      create_release: false               # Don't create releases for slides
+      push_to_releases_branch: true       # But do save to releases branch
+      releases_branch_name: "slides"      # Separate branch for slides
+      artifact_name: "slides-pdf"
+    permissions:
+      contents: write
+  
+  build-poster:
+    name: Build Conference Poster
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    with:
+      entry_tex: "poster.tex"
+      working_directory: "poster"
+      engine: "lualatex"                  # Poster might need LuaLaTeX
+      create_release: false
+      push_to_releases_branch: false      # Don't save posters to branch
+      artifact_name: "poster-pdf"
+    permissions:
+      contents: write
+  
+  # Optional: Combine all PDFs into a single release
+  create-combined-release:
+    name: Create Combined Release
+    needs: [build-thesis, build-slides, build-poster]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only on main branch
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-pdf"
+          merge-multiple: true
+      
+      - name: Create combined release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="combined-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          gh release create "$TAG" \
+            --title "Complete Document Set - $(date -u +'%Y-%m-%d %H:%M')" \
+            --target "$GITHUB_SHA" \
+            --generate-notes \
+            *.pdf
