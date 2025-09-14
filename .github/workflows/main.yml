@@ -231,5 +231,5 @@ jobs:
           --title "$RELEASE_NAME" \
           --target "$GITHUB_SHA" \
           --generate-notes \
-          --latest
+          --latest \
           ${{ env.RELEASE_FILES }}
