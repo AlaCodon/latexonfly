@@ -3,8 +3,8 @@ name: LaTeX CI (pure TeX Live, minimal, cached, on-demand)
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - release
 
 permissions:
   contents: write
@@ -196,20 +196,26 @@ jobs:
           tlmgr info --only-installed --data name | sort > texlive.packages.txt || true
           wc -l texlive.packages.txt || true
 
+      - name: Compute release metadata (title and tag)
+        id: meta
+        shell: bash
+        run: |
+          TITLE="$(git log -1 --pretty=%s)"   # first line only
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          TAG="rel-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       - name: Rename PDFs with tag
-      # Only run this on tag builds
-        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
         run: |
           set -euxo pipefail
-          TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
-          TAG_SAFE="${TAG//\//-}"
-
           mkdir -p dist
           shopt -s nullglob
           for f in ./*.pdf; do
             bn="$(basename "$f")"
             base="${bn%.pdf}"
-            cp "$f" "dist/${base}-${TAG_SAFE}.pdf"
+            cp "$f" "dist/${base}-${TAG_NAME}.pdf"
           done
 
           # Expose for the next step
@@ -218,8 +224,12 @@ jobs:
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.title }}
         run: |
-          gh release create ${{ github.ref_name }} \
+          gh release create "$TAG_NAME" \
+          --title "$RELEASE_NAME" \
+          --target "$GITHUB_SHA" \
           --generate-notes \
-          --title "Release ${{ github.ref_name }}" \
+          --latest
           ${{ env.RELEASE_FILES }}
