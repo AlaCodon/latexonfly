@@ -12,7 +12,7 @@ on:
 jobs:
   test_reusable_workflow:
     name: Test Reusable Workflow
-    uses: ./.github/workflows/reusable-latex-ci.yml
+    uses: ./.github/workflows/latex-ci.yml
     with:
       entry_tex: "main.tex"
       engine: "pdflatex"

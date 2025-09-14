@@ -47,7 +47,7 @@ on:
 
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     permissions:
       contents: write
     with:
@@ -67,13 +67,13 @@ with:
   entry_tex: "your-main-file.tex"        # Your main LaTeX file
   engine: "pdflatex"                      # or "xelatex", "lualatex"
   working_directory: "docs"               # if LaTeX files are in a subdirectory
-  
+
   # Release settings
   create_release: true                    # Set to false for draft projects
   release_tag_prefix: "v"                # Change prefix if needed
   push_to_releases_branch: true          # Keep PDF history
   releases_branch_name: "releases"       # Custom branch name
-  
+
   # Advanced settings
   texlive_scheme: "basic"                # or "minimal", "full"
   timeout_minutes: 30                    # Increase for complex documents
@@ -117,16 +117,16 @@ on:
 ```yaml
 jobs:
   build-thesis:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "thesis.tex"
       working_directory: "thesis"
       release_tag_prefix: "thesis"
     permissions:
       contents: write
-  
+
   build-slides:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "slides.tex"
       working_directory: "slides"
@@ -143,7 +143,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "complex-document.tex"
       texlive_scheme: "full"      # Full TeX Live installation
@@ -168,7 +168,7 @@ on:
 
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       create_release: false          # No releases for dev
@@ -178,7 +178,7 @@ jobs:
       contents: write
 
 ---
-# .github/workflows/production-build.yml  
+# .github/workflows/production-build.yml
 name: Production Build
 on:
   push:
@@ -186,7 +186,7 @@ on:
 
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       create_release: true           # Create releases
@@ -207,7 +207,7 @@ jobs:
 
 ### Workflow Not Found
 ```
-Error: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main not found
+Error: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main not found
 ```
 **Solution**: Ensure you're using the correct repository path and the workflow file exists.
 

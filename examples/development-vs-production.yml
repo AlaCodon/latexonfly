@@ -16,7 +16,7 @@ jobs:
   development-build:
     name: Development Build
     if: github.ref != 'refs/heads/main'
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       engine: "pdflatex"
@@ -29,12 +29,12 @@ jobs:
       timeout_minutes: 20                 # Shorter timeout for quick feedback
     permissions:
       contents: write
-  
+
   # Production build for main branch
   production-build:
     name: Production Build
     if: github.ref == 'refs/heads/main'
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       engine: "pdflatex"

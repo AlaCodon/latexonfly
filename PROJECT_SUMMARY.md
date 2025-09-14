@@ -45,7 +45,7 @@ This repository has been successfully refactored from a repository-specific LaTe
 
 ### Simple Usage
 ```yaml
-uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
 with:
   entry_tex: "main.tex"
   engine: "pdflatex"
@@ -55,7 +55,7 @@ permissions:
 
 ### Advanced Usage
 ```yaml
-uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
 with:
   entry_tex: "thesis.tex"
   working_directory: "thesis"
@@ -73,7 +73,7 @@ permissions:
 ```
 tex-quantum_memory/
 ├── .github/workflows/
-│   ├── reusable-latex-ci.yml      # Main reusable workflow
+│   ├── latex-ci.yml      # Main reusable workflow
 │   ├── example-usage.yml          # Basic usage example
 │   ├── test-workflow.yml          # Test/validation workflow
 │   └── main.yml.deprecated        # Original workflow (deprecated)

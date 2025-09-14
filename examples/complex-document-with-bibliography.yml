@@ -13,33 +13,33 @@ on:
 jobs:
   build-paper:
     name: Build Academic Paper
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "paper.tex"
       working_directory: "src"             # LaTeX files in src/ directory
       engine: "pdflatex"                  # Most journals prefer pdflatex
       texlive_scheme: "full"              # Academic papers often need many packages
-      
+
       # Release configuration for submissions
       create_release: true
       release_tag_prefix: "submission"    # Tag as submission-YYYYMMDD-...
       push_to_releases_branch: true
       releases_branch_name: "submissions" # Track submission versions
-      
+
       # Extended timeout for complex documents
       timeout_minutes: 45
-      
+
       # Keep artifacts for journal submission requirements
       keep_build_artifacts: true
       artifact_name: "academic-paper"
-      
+
     permissions:
       contents: write
-  
+
   # Optional: Build supplementary materials
   build-supplementary:
     name: Build Supplementary Materials
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "supplementary.tex"
       working_directory: "supplementary"
@@ -50,7 +50,7 @@ jobs:
       artifact_name: "supplementary-materials"
     permissions:
       contents: write
-  
+
   # Combine main paper and supplementary into submission package
   create-submission-package:
     name: Create Submission Package
@@ -59,51 +59,51 @@ jobs:
     if: github.ref == 'refs/heads/submission'
     steps:
       - uses: actions/checkout@v5
-      
+
       - name: Download paper artifacts
         uses: actions/download-artifact@v4
         with:
           name: academic-paper
           path: submission-package/
-      
+
       - name: Download supplementary artifacts
         uses: actions/download-artifact@v4
         with:
           name: supplementary-materials
           path: submission-package/
-      
+
       - name: Prepare submission files
         run: |
           cd submission-package
-          
+
           # Rename files for submission
           mv paper.pdf main-manuscript.pdf 2>/dev/null || true
           mv supplementary.pdf supplementary-materials.pdf 2>/dev/null || true
-          
+
           # Copy source files if required by journal
           cp -r ../src/*.tex . 2>/dev/null || true
           cp -r ../src/*.bib . 2>/dev/null || true
-          
+
           # Create submission README
           cat > submission-readme.txt << EOF
           Submission Package Contents:
           - main-manuscript.pdf: Main paper
           - supplementary-materials.pdf: Supplementary materials
           - Source LaTeX files (if required)
-          
+
           Generated: $(date)
           Commit: ${GITHUB_SHA}
           EOF
-      
+
       - name: Create submission release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd submission-package
           TAG="submission-$(date -u +'%Y%m%d-%H%M%S')"
-          
+
           tar -czf submission-package.tar.gz *
-          
+
           gh release create "$TAG" \
             --title "Journal Submission Package - $(date -u +'%Y-%m-%d')" \
             --target "$GITHUB_SHA" \

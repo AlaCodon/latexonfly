@@ -40,7 +40,7 @@ on:
     branches: [main, release]
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       engine: "pdflatex"

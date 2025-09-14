@@ -1,7 +1,7 @@
 # .github/workflows/main.yml.deprecated
-# 
+#
 # DEPRECATED: This workflow has been converted to a reusable workflow.
-# Use .github/workflows/reusable-latex-ci.yml instead.
+# Use .github/workflows/latex-ci.yml instead.
 # See README.md for usage instructions.
 #
 name: LaTeX CI (pure TeX Live, minimal, cached, on-demand) - DEPRECATED

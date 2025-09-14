@@ -28,7 +28,7 @@ on:
 
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     permissions:
       contents: write
     with:
@@ -86,12 +86,12 @@ The workflow provides these outputs that you can use in subsequent jobs:
 ```yaml
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
     permissions:
       contents: write
-  
+
   notify:
     needs: build
     runs-on: ubuntu-latest
@@ -116,7 +116,7 @@ on:
 
 jobs:
   build-thesis:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "thesis.tex"
       working_directory: "thesis"
@@ -124,9 +124,9 @@ jobs:
       release_tag_prefix: "thesis"
     permissions:
       contents: write
-  
+
   build-slides:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "slides.tex"
       working_directory: "slides"
@@ -141,7 +141,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "document.tex"
       engine: "xelatex"
@@ -156,7 +156,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/reusable-latex-ci.yml@main
+    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       create_release: false          # No releases for dev builds
