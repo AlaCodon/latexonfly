@@ -351,18 +351,18 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         run: |
           set -euxo pipefail
-          mkdir -p ../dist
+          mkdir -p dist
           shopt -s nullglob
           for f in ./*.pdf; do
             if [ -f "$f" ]; then
               bn="$(basename "$f")"
               base="${bn%.pdf}"
-              cp "$f" "../dist/${base}-${TAG_NAME}.pdf"
+              cp "$f" "./dist/${base}-${TAG_NAME}.pdf"
             fi
           done
 
           # Count and list files
-          cd ../dist
+          cd ./dist
           if ls *.pdf 1> /dev/null 2>&1; then
             echo "RELEASE_FILES=$(ls *.pdf | tr '\n' ' ')" >> "$GITHUB_ENV"
             echo "Generated release files:"
@@ -388,7 +388,7 @@ jobs:
           TAG_NAME: ${{ steps.meta.outputs.tag }}
           RELEASE_NAME: ${{ steps.meta.outputs.title }}
         run: |
-          cd ../dist
+          cd dist
           RELEASE_URL=$(gh release create "$TAG_NAME" \
             --title "$RELEASE_NAME" \
             --target "$GITHUB_SHA" \
