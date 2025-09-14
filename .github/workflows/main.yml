@@ -233,3 +233,24 @@ jobs:
           --generate-notes \
           --latest \
           ${{ env.RELEASE_FILES }}
+
+      - name: Push PDF to preview branch
+        env:
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.title }}
+        run: |
+          branch="releases"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin "$branch"; then
+            git fetch origin "$branch":"$branch"
+            git switch "$branch"
+          else
+            git checkout --orphan "$branch"
+          fi
+
+          cp ${{ env.RELEASE_FILES }} ./
+          git add *.pdf
+          git commit -m "$TAG_NAME: $RELEASE_NAME"
+          git push origin HEAD:"$branch"
