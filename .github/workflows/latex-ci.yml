@@ -388,7 +388,7 @@ jobs:
           TAG_NAME: ${{ steps.meta.outputs.tag }}
           RELEASE_NAME: ${{ steps.meta.outputs.title }}
         run: |
-          cd dist
+          cd ../dist
           RELEASE_URL=$(gh release create "$TAG_NAME" \
             --title "$RELEASE_NAME" \
             --target "$GITHUB_SHA" \
