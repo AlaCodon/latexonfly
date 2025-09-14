@@ -116,9 +116,9 @@ jobs:
         run: |
           set -euxo pipefail
           tlmgr option repository "${TL_MIRROR}"
-          tlmgr update --self
+          tlmgr update --self --all
           # Build helpers
-          tlmgr install latexmk texliveonfly revtex
+          tlmgr install latexmk texliveonfly
 
       # External tool discipline: detect needs before compile
       - name: Detect external tool needs
