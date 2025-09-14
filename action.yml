@@ -141,6 +141,9 @@ runs:
             tar -xzf install-tl-unx.tar.gz --strip-components=1
           fi
 
+          # Determine scheme based on input
+          SCHEME="scheme-${{ inputs.texlive_scheme }}"
+
           # Create profile for unattended installation
           cat > /tmp/texlive.profile <<EOF
         TEXDIR ${{ env.TL_ROOT }}
