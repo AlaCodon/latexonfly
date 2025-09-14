@@ -147,12 +147,12 @@ runs:
           # Create profile for unattended installation
           cat > /tmp/texlive.profile <<EOF
         TEXDIR ${{ env.TL_ROOT }}
-        TEXMFCONFIG ~/.texlive*/texmf-config
+        TEXMFCONFIG ~/.texlive/texmf-config
         TEXMFHOME ~/texmf
         TEXMFLOCAL ${{ env.TL_ROOT }}/texmf-local
         TEXMFSYSCONFIG ${{ env.TL_ROOT }}/texmf-config
         TEXMFSYSVAR ${{ env.TL_ROOT }}/texmf-var
-        TEXMFVAR ~/.texlive*/texmf-var
+        TEXMFVAR ~/.texlive/texmf-var
         selected_scheme ${SCHEME}
         binary_x86_64-linux 1
         instopt_adjustrepo 1
