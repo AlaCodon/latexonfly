@@ -40,8 +40,8 @@ jobs:
           path: |
             ${{ env.TL_ROOT }}
             ${{ runner.temp }}/texlive-installer
-            $HOME/.texlive*
-            $HOME/texmf
+            ~/.texlive*
+            ~/texmf
           key: texlive-${{ runner.os }}-sources-${{ hashFiles('**/*.tex', '**/*.sty', '**/*.cls', '**/*.bib') }}
           restore-keys: |
             texlive-${{ runner.os }}-sources-
@@ -100,16 +100,16 @@ jobs:
           # Add TeX Live to PATH for this job
           echo "${TL_BIN_DIR}" >> "$GITHUB_PATH"
 
-      - name: Upload TeX Live profile(s)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
-          path: |
-            /tmp/texlive.profile
-            /tmp/texlive.profile.resolved
-          if-no-files-found: warn
-          retention-days: 7
+      # - name: Upload TeX Live profile(s)
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
+      #     path: |
+      #       /tmp/texlive.profile
+      #       /tmp/texlive.profile.resolved
+      #     if-no-files-found: warn
+      #     retention-days: 7
 
       - name: Bootstrap tlmgr and minimal tools
         shell: bash
@@ -215,8 +215,6 @@ jobs:
           # Expose for the next step
           echo "RELEASE_FILES=dist/*.pdf" >> "$GITHUB_ENV"
 
-
-      # Create a GitHub Release and upload the compiled PDF as an asset
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
