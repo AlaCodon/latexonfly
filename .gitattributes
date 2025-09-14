@@ -97,3 +97,6 @@
 .gitattributes export-ignore
 .gitignore     export-ignore
 .gitkeep       export-ignore
+
+# Exclude the .github directory from release archives
+.github/* export-ignore
