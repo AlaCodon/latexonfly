@@ -16,7 +16,7 @@ on:
 jobs:
   build_latex:
     name: Build and Release PDF
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       # Basic configuration
       entry_tex: "main.tex"                    # Your main LaTeX file

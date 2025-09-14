@@ -13,7 +13,7 @@ on:
 jobs:
   build-thesis:
     name: Build Thesis
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "thesis.tex"
       working_directory: "thesis"
@@ -27,7 +27,7 @@ jobs:
 
   build-slides:
     name: Build Presentation Slides
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "slides.tex"
       working_directory: "slides"
@@ -41,7 +41,7 @@ jobs:
 
   build-poster:
     name: Build Conference Poster
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "poster.tex"
       working_directory: "poster"

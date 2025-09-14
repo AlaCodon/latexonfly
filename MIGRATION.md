@@ -47,7 +47,7 @@ on:
 
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     permissions:
       contents: write
     with:
@@ -117,7 +117,7 @@ on:
 ```yaml
 jobs:
   build-thesis:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "thesis.tex"
       working_directory: "thesis"
@@ -126,7 +126,7 @@ jobs:
       contents: write
 
   build-slides:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "slides.tex"
       working_directory: "slides"
@@ -143,7 +143,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "complex-document.tex"
       texlive_scheme: "full"      # Full TeX Live installation
@@ -168,7 +168,7 @@ on:
 
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       create_release: false          # No releases for dev
@@ -186,7 +186,7 @@ on:
 
 jobs:
   build:
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "main.tex"
       create_release: true           # Create releases
@@ -207,7 +207,7 @@ jobs:
 
 ### Workflow Not Found
 ```
-Error: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main not found
+Error: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main not found
 ```
 **Solution**: Ensure you're using the correct repository path and the workflow file exists.
 

@@ -13,7 +13,7 @@ on:
 jobs:
   build-paper:
     name: Build Academic Paper
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "paper.tex"
       working_directory: "src"             # LaTeX files in src/ directory
@@ -39,7 +39,7 @@ jobs:
   # Optional: Build supplementary materials
   build-supplementary:
     name: Build Supplementary Materials
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "supplementary.tex"
       working_directory: "supplementary"

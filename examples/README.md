@@ -85,7 +85,7 @@ jobs:
   # Development builds (fast, no releases)
   dev-thesis:
     if: github.ref != 'refs/heads/main'
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "thesis.tex"
       working_directory: "thesis"
@@ -98,7 +98,7 @@ jobs:
   # Production builds (full features)
   prod-thesis:
     if: github.ref == 'refs/heads/main'
-    uses: AlaCodon/tex-quantum_memory/.github/workflows/latex-ci.yml@main
+    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
     with:
       entry_tex: "thesis.tex"
       working_directory: "thesis"
