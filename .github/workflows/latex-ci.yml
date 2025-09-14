@@ -186,7 +186,7 @@ jobs:
           TEXMFSYSCONFIG ${TL_ROOT}/texmf-config
           TEXMFSYSVAR ${TL_ROOT}/texmf-var
           binary_x86_64-linux 1
-          instopt_adjustrepo 1
+          instopt_adjustrepo 0
           instopt_write18_restricted 1
           tlpdbopt_autobackup 0
           tlpdbopt_desktop_integration 0
