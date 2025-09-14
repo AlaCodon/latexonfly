@@ -222,7 +222,7 @@ jobs:
         run: |
           set -euxo pipefail
           tlmgr option repository "${TL_MIRROR}"
-          tlmgr update --self --all
+          tlmgr update --self --all || true
           # Build helpers
           tlmgr install latexmk texliveonfly
 
