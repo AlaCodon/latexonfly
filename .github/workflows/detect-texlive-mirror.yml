@@ -9,9 +9,6 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Generate HTTPS tlnet mirror list from CTAN mirmon
         run: |
           set -euo pipefail
