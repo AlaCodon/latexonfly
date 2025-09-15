@@ -1,0 +1,143 @@
+name: Probe TeX Live mirrors (inline)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 3 * * *" # daily at 03:15 UTC
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate HTTPS tlnet mirror list from CTAN mirmon
+        run: |
+          set -euo pipefail
+          MIRMON_URL="https://ctan.org/mirrors/mirmon"
+          HTML="$(curl -fsSL "$MIRMON_URL")"
+          mapfile -t LINKS < <(
+            printf '%s' "$HTML" \
+              | grep -oE 'https://[^"]+' \
+              | grep -vE '://([^/]*\.)?ctan\.org(/|$)' \
+              | grep -Ei '/(ctan|tex-archive)(/|$)' \
+              | sed -E 's#/$##' \
+              | sort -u
+          )
+          {
+            for base in "${LINKS[@]}"; do
+              printf "%s/systems/texlive/tlnet\n" "$base"
+            done
+          } > tlnet_mirrors.txt
+          echo "Generated $(wc -l < tlnet_mirrors.txt) mirror URLs"
+
+      - name: Probe mirrors and write per-mirror CSV (latency-first)
+        env:
+          JOBS: "24"          # parallel workers
+          MAX_TIME: "12"      # curl max time per request (s)
+          CONN_TIMEOUT: "3"   # curl connect timeout (s)
+        run: |
+          set -euo pipefail
+          INPUT="tlnet_mirrors.txt"
+          [[ -s "$INPUT" ]] || { echo "Missing list: $INPUT" >&2; exit 1; }
+
+          CURRENT_TIMESTAMP=$(date -u +%s)
+          MAX_AGE_SECONDS=$((6*3600)) # fresh if Last-Modified within past 6h
+
+          export CURRENT_TIMESTAMP MAX_AGE_SECONDS CONN_TIMEOUT MAX_TIME
+
+          TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP"' EXIT
+          export TMP
+
+          # CSV header with guaranteed newline
+          printf 'mirror,http_code,last_modified_epoch,last_modified_iso,ttfb_sec,time_total_sec,speed_bps,notes\n' > mirror_probe.csv
+
+          # Parallel probe; each worker writes a .line file ending with a newline
+          xargs -r -P "${JOBS}" -n 1 bash -c '
+            base="$1"
+            url="$base/tlpkg/texlive.tlpdb.md5"
+            notes=""
+
+            # Minimal GET (0-0 bytes) to fetch headers and timing in one go
+            out="$(curl -sSL --connect-timeout "$CONN_TIMEOUT" --max-time "$MAX_TIME" \
+                     --range 0-0 -D - -o /dev/null \
+                     -w " TN=%{time_namelookup} TC=%{time_connect} TA=%{time_appconnect} TS=%{time_starttransfer} TT=%{time_total}" \
+                     "$url" 2>/dev/null || true)"
+
+            # Status code from the last status line
+            code="$(printf "%s\n" "$out" | awk '\''toupper($1) ~ /^HTTP/ {c=$2} END{print c+0}'\'')"
+            [ -n "$code" ] || code=0
+
+            # Tag partial content (expected for range requests)
+            if [ "$code" = 206 ]; then
+              notes="${notes:+$notes; }partial_206"
+            fi
+
+            # Last-Modified (last occurrence)
+            lm="$(printf "%s\n" "$out" | awk '\''BEGIN{IGNORECASE=1} /^Last-Modified:/ {sub(/^[^:]+:[[:space:]]*/, ""); v=$0} END{print v}'\'')"
+
+            # Extract timing tokens (TTFB = TS)
+            ttfb="$(printf "%s" "$out" | sed -n '\''s/.* TS=\([0-9.][0-9.]*\).*/\1/p'\'')"
+            ttot="$(printf "%s" "$out" | sed -n '\''s/.* TT=\([0-9.][0-9.]*\).*/\1/p'\'')"
+            [ -n "$ttfb" ] || ttfb=0
+            [ -n "$ttot" ] || ttot=0
+
+            # Convert Last-Modified to epoch and ISO
+            if [ -n "$lm" ]; then
+              fepoch="$(date -u -d "$lm" +%s 2>/dev/null || echo -1)"
+            else
+              fepoch=-1
+            fi
+            if [ "$fepoch" -ge 0 ]; then
+              fiso="$(date -u -d "@$fepoch" "+%Y-%m-%dT%H:%M:%SZ")"
+            else
+              fiso=""
+              notes="${notes:+$notes; }no_last_modified"
+            fi
+
+            # Mark stale
+            if [ "$fepoch" -ge 0 ] && [ "$fepoch" -le $((CURRENT_TIMESTAMP - MAX_AGE_SECONDS)) ]; then
+              notes="${notes:+$notes; }stale"
+            fi
+
+            # Throughput sample (256 KiB range) -> 206 expected
+            sp="$(curl -sSL --connect-timeout "$CONN_TIMEOUT" --max-time "$MAX_TIME" \
+                       --range 0-262143 -w "%{speed_download}" -o /dev/null "$url" 2>/dev/null || echo 0)"
+
+            # Write one CSV line with a newline
+            hash="$(printf "%s" "$base" | md5sum | awk "{print \$1}")"
+            printf "%s,%s,%s,%s,%s,%s,%s,%s\n" "$base" "$code" "$fepoch" "$fiso" "$ttfb" "$ttot" "$sp" "$notes" > "$TMP/$hash.line"
+          ' _ < "$INPUT"
+
+          # Merge into CSV
+          if ls "$TMP"/*.line >/dev/null 2>&1; then
+            cat "$TMP"/*.line >> mirror_probe.csv
+          fi
+
+          # Choose best: fresh + 200/206 OK, lowest TTFB; tie-breakers: highest speed, then lowest total
+          best="$(awk -F, -v now="$CURRENT_TIMESTAMP" -v max_age="$MAX_AGE_SECONDS" \
+                    'NR>1 && ($2=="200" || $2=="206") && $3>=0 && $3 > (now - max_age)' mirror_probe.csv \
+                  | sort -t, -k5,5n -k7,7nr -k6,6n \
+                  | head -n1 \
+                  | cut -d, -f1 || true)"
+
+          if [ -n "${best:-}" ]; then
+            echo "Best mirror (latency-first): $best"
+            echo "$best" > best_mirror.txt
+          else
+            echo "No fresh mirrors matched within $MAX_AGE_SECONDS seconds." >&2
+            : > best_mirror.txt
+          fi
+
+          echo "Per-mirror data written to mirror_probe.csv"
+
+      - name: Upload artifacts (per-mirror data and selection)
+        uses: actions/upload-artifact@v4
+        with:
+          name: texlive-mirror-probe
+          path: |
+            tlnet_mirrors.txt
+            mirror_probe.csv
+            best_mirror.txt
