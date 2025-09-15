@@ -175,17 +175,31 @@ runs:
         # Add TeX Live to PATH for this action
         echo "${TL_BIN_DIR}" >> "$GITHUB_PATH"
 
-    - name: Upload TeX Live profile(s)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
-        path: |
-          /tmp/texlive.profile
-          /tmp/texlive.profile.resolved
-        if-no-files-found: warn
-        retention-days: 7
-
+    # - name: Upload TeX Live profile(s)
+    #   if: always()
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
+    #     path: |
+    #       /tmp/texlive.profile
+    #       /tmp/texlive.profile.resolved
+    #     if-no-files-found: warn
+    #     retention-days: 7
+        
+    - name: Check entry TeX file exists
+      id: check_entry
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        set -euo pipefail
+        if [ -f "${ENTRY_TEX}" ]; then
+          echo "Found TeX entry file: ${ENTRY_TEX}"
+          echo "tex_exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "No TeX entry file found at: ${ENTRY_TEX}"
+          echo "tex_exists=false" >> "$GITHUB_OUTPUT"
+        fi
+        
     - name: Bootstrap tlmgr and minimal tools
       shell: bash
       run: |
@@ -238,6 +252,7 @@ runs:
 
     - name: Build PDF (on-demand packages)
       id: build
+      if: steps.check_entry.outputs.tex_exists == 'true'
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       run: |
