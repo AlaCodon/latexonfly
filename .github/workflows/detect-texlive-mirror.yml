@@ -43,7 +43,7 @@ jobs:
           [[ -s "$INPUT" ]] || { echo "Missing list: $INPUT" >&2; exit 1; }
 
           CURRENT_TIMESTAMP=$(date -u +%s)
-          MAX_AGE_SECONDS=$((6*3600)) # fresh if Last-Modified within past 6h
+          MAX_AGE_SECONDS=$((28*3600)) # fresh if Last-Modified within past 28h
 
           export CURRENT_TIMESTAMP MAX_AGE_SECONDS CONN_TIMEOUT MAX_TIME
 
