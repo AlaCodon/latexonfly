@@ -337,21 +337,30 @@ runs:
         name: ${{ inputs.artifact_name }}-build-deps
         path: |
           texlive.packages.txt
-        if-no-files-found: ignore
-        retention-days: 7
+        if-no-files-found: warn
+        retention-days: 1
 
+    # - name: Upload build artifacts
+    #   if: inputs.keep_build_artifacts == 'true'
+    #   uses: actions/upload-artifact@v4.6.2
+    #   with:
+    #     name: ${{ inputs.artifact_name }}-build-artifacts
+    #     path: |
+    #       ${{ inputs.working_directory }}/*.log
+    #       ${{ inputs.working_directory }}/*.aux
+    #       ${{ inputs.working_directory }}/*.fls
+    #       ${{ inputs.working_directory }}/*.fdb_latexmk
+    #     if-no-files-found: ignore
+    #     retention-days: 1
+    
     - name: Upload build artifacts
       if: inputs.keep_build_artifacts == 'true'
       uses: actions/upload-artifact@v4.6.2
       with:
         name: ${{ inputs.artifact_name }}-build-artifacts
-        path: |
-          ${{ inputs.working_directory }}/*.log
-          ${{ inputs.working_directory }}/*.aux
-          ${{ inputs.working_directory }}/*.fls
-          ${{ inputs.working_directory }}/*.fdb_latexmk
-        if-no-files-found: ignore
-        retention-days: 7
+        path: ${{ inputs.working_directory }}/
+        if-no-files-found: warn
+        retention-days: 1
 
     - name: Compute release metadata (title and tag)
       if: inputs.create_release == 'true'
@@ -393,13 +402,6 @@ runs:
           echo "RELEASE_FILES=" >> "$GITHUB_ENV"
         fi
 
-    - name: Upload PDF artifacts
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        name: ${{ inputs.artifact_name }}
-        path: ${{ inputs.working_directory }}/*.pdf
-        if-no-files-found: warn
-        retention-days: 30
 
     - name: Create GitHub Release
       if: inputs.create_release == 'true' && env.RELEASE_FILES != ''
