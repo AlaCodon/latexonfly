@@ -46,18 +46,8 @@ inputs:
     default: ''
 
   # Output configuration
-  artifact_name:
-    description: 'Name for PDF artifacts'
-    required: false
-    default: 'latex-pdfs'
-
   keep_build_deps:
     description: 'Whether to upload build deps for debugging'
-    required: false
-    default: 'false'
-
-  keep_build_artifacts:
-    description: 'Whether to upload build artifacts for debugging'
     required: false
     default: 'false'
 
@@ -66,13 +56,6 @@ outputs:
     description: 'Generated PDF files'
     value: ${{ steps.build.outputs.pdf_files }}
 
-  release_tag:
-    description: 'Created release tag'
-    value: ${{ steps.meta.outputs.tag }}
-
-  release_url:
-    description: 'URL of created release'
-    value: ${{ steps.release.outputs.url }}
 
 runs:
   using: 'composite'
@@ -308,35 +291,3 @@ runs:
           ~/.texlive*
           ~/texmf
         key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ inputs.cache_key_suffix }}-${{ steps.pkg-hash.outputs.hash }}
-
-    - name: Upload build deps
-      if: inputs.keep_build_deps == 'true'
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        name: ${{ inputs.artifact_name }}-build-deps
-        path: |
-          texlive.packages.txt
-        if-no-files-found: warn
-        retention-days: 1
-
-    # - name: Upload build artifacts
-    #   if: inputs.keep_build_artifacts == 'true'
-    #   uses: actions/upload-artifact@v4.6.2
-    #   with:
-    #     name: ${{ inputs.artifact_name }}-build-artifacts
-    #     path: |
-    #       ${{ inputs.working_directory }}/*.log
-    #       ${{ inputs.working_directory }}/*.aux
-    #       ${{ inputs.working_directory }}/*.fls
-    #       ${{ inputs.working_directory }}/*.fdb_latexmk
-    #     if-no-files-found: ignore
-    #     retention-days: 1
-    
-    - name: Upload build artifacts
-      if: inputs.keep_build_artifacts == 'true'
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        name: ${{ inputs.artifact_name }}-build-artifacts
-        path: ${{ inputs.working_directory }}/
-        if-no-files-found: warn
-        retention-days: 1
