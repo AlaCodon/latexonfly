@@ -348,6 +348,7 @@ runs:
             bn="$(basename "$f")"
             base="${bn%.pdf}"
             cp "$f" "./dist/${base}-${TAG_NAME}.pdf"
+            cp "$f" "./dist/${base}.pdf"
           fi
         done
 
