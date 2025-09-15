@@ -29,27 +29,6 @@ inputs:
     required: false
     default: 'basic'
 
-  # Release configuration
-  create_release:
-    description: 'Whether to create a GitHub release'
-    required: false
-    default: 'true'
-
-  release_tag_prefix:
-    description: 'Prefix for release tags'
-    required: false
-    default: 'rel'
-
-  push_to_releases_branch:
-    description: 'Whether to push PDFs to releases branch'
-    required: false
-    default: 'true'
-
-  releases_branch_name:
-    description: 'Name of the releases branch'
-    required: false
-    default: 'releases'
-
   # Advanced configuration
   texlive_mirror:
     description: 'TeX Live mirror URL'
