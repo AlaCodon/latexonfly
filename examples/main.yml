@@ -1,0 +1,152 @@
+name: Build LaTeX Documents
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      WORKING_DIRECTORY: "."
+      CREATE_RELEASE: true
+      RELEASE_TAG_PREFIX: "rel"
+      PUSH_TO_RELEASES_BRANCH: true
+      RELEASES_BRANCH_NAME: "releases"
+
+      ARTIFACT_NAME: "pdfs"
+      KEEP_BUILD_DEPS: false
+      KEEP_BUILD_ARTIFACTS: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+
+      - name: Build LaTeX documents
+        uses: AlaCodon/latexonfly@v2.0.0
+        with:
+          # Basic configuration
+          entry_tex: "main.tex"
+          engine: "pdflatex"
+          working_directory: "${{ env.WORKING_DIRECTORY }}"
+
+          # Advanced configuration
+          texlive_mirror: "https://mirror.math.princeton.edu/pub/CTAN/systems/texlive/tlnet"
+          texlive_scheme: "basic"
+          timeout_minutes: 30
+          keep_build_deps: "${{ env.KEEP_BUILD_DEPS }}"
+          cache_key_suffix: ""
+
+      - name: Upload build deps
+        if: env.KEEP_BUILD_DEPS == 'true'
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-build-deps
+          path: |
+            texlive.packages.txt
+          if-no-files-found: warn
+          retention-days: 1
+          
+      - name: Upload build artifacts
+        if: env.KEEP_BUILD_ARTIFACTS == 'true'
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-build-artifacts
+          path: ${{ env.WORKING_DIRECTORY }}/
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Compute release metadata (title and tag)
+        if: env.CREATE_RELEASE == 'true'
+        id: meta
+        shell: bash
+        run: |
+          TITLE="$(git log -1 --pretty=%s)"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          TAG="${{ env.RELEASE_TAG_PREFIX }}-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release artifacts
+        if: env.CREATE_RELEASE == 'true'
+        env:
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p ./dist ./preview
+          shopt -s nullglob
+          for f in ./*.pdf; do
+            if [ -f "$f" ]; then
+              bn="$(basename "$f")"
+              base="${bn%.pdf}"
+              cp "$f" "./dist/${base}-${TAG_NAME}.pdf"
+              cp "$f" "./preview/${base}.pdf"
+            fi
+          done
+          for f in ./*.bbl; do
+            if [ -f "$f" ]; then
+              bn="$(basename "$f")"
+              base="${bn%.bbl}"
+              cp "$f" "./dist/${base}-${TAG_NAME}.bbl"
+              cp "$f" "./preview/${base}.bbl"
+            fi
+          done
+          cd ./dist
+          files=( * )
+          all_files="${files[*]}"
+          echo "RELEASE_FILES=$all_files" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        if: env.CREATE_RELEASE == 'true' && env.RELEASE_FILES != ''
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.title }}
+        shell: bash
+        run: |
+          cd dist
+          RELEASE_URL=$(gh release create "$TAG_NAME" \
+            --title "$RELEASE_NAME" \
+            --target "$GITHUB_SHA" \
+            --generate-notes \
+            --latest \
+            * | tail -n1)
+          echo "url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Push PDF to releases branch
+        if: env.PUSH_TO_RELEASES_BRANCH == 'true' && env.RELEASE_FILES != ''
+        env:
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.title }}
+          BRANCH_NAME: ${{ env.RELEASES_BRANCH_NAME }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
+            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
+            git switch "$BRANCH_NAME"
+          else
+            git checkout --orphan "$BRANCH_NAME"
+            git rm -rf . 2>/dev/null || true
+            find . -maxdepth 1 -type f -delete 2>/dev/null || true
+          fi
+          find preview -type f | while read -r file; do
+              base=$(basename "$file")
+              cp "$file" "$base"
+              git add "$base"
+          done
+          for f in dist/*.pdf; do
+            if [ -f "$f" ]; then
+              base="$(basename "$f")"
+              cp "$f" "$base"
+              git add "$base"
+            fi
+          done
+          git commit -m "$TAG_NAME: $RELEASE_NAME"
+          git push origin HEAD:"$BRANCH_NAME"
