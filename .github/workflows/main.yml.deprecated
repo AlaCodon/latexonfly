@@ -107,7 +107,7 @@ jobs:
 
       # - name: Upload TeX Live profile(s)
       #   if: always()
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@v4.6.2
       #   with:
       #     name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
       #     path: |

@@ -182,7 +182,7 @@ runs:
 
     # - name: Upload TeX Live profile(s)
     #   if: always()
-    #   uses: actions/upload-artifact@v4
+    #   uses: actions/upload-artifact@v4.6.2
     #   with:
     #     name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
     #     path: |
@@ -302,7 +302,7 @@ runs:
 
     - name: Upload build deps
       if: inputs.keep_build_deps == 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: ${{ inputs.artifact_name }}-build-deps
         path: |
@@ -312,7 +312,7 @@ runs:
 
     - name: Upload build artifacts
       if: inputs.keep_build_artifacts == 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: ${{ inputs.artifact_name }}-build-artifacts
         path: |
@@ -364,7 +364,7 @@ runs:
         fi
 
     - name: Upload PDF artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: ${{ inputs.artifact_name }}
         path: ${{ inputs.working_directory }}/*.pdf

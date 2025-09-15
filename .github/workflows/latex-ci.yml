@@ -208,7 +208,7 @@ jobs:
 
       - name: Upload TeX Live profile(s)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: texlive-profile-${{ runner.os }}-${{ github.run_id }}
           path: |
@@ -313,7 +313,7 @@ jobs:
 
       - name: Upload build deps
         if: inputs.keep_build_deps
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ inputs.artifact_name }}-build-deps
           path: |
@@ -323,7 +323,7 @@ jobs:
 
       - name: Upload build artifacts
         if: inputs.keep_build_artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ inputs.artifact_name }}-build-artifacts
           path: |
@@ -373,7 +373,7 @@ jobs:
           fi
 
       - name: Upload PDF artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ inputs.artifact_name }}
           path: ${{ inputs.working_directory }}/*.pdf

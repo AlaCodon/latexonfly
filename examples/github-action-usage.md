@@ -22,8 +22,8 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        
+        uses: actions/checkout@v5.0.0
+
       - name: Build LaTeX documents
         uses: AlaCodon/latexonfly@main
         with:
@@ -48,8 +48,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v5.0.0
+
       - name: Build thesis
         uses: AlaCodon/latexonfly@main
         with:
@@ -65,8 +65,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v5.0.0
+
       - name: Build slides
         uses: AlaCodon/latexonfly@main
         with:
@@ -86,20 +86,20 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v5.0.0
+
       - name: Build LaTeX
         id: latex
         uses: AlaCodon/latexonfly@main
         with:
           entry_tex: "document.tex"
-          
+
       - name: Process outputs
         run: |
           echo "Generated PDFs: ${{ steps.latex.outputs.pdf_files }}"
           echo "Release tag: ${{ steps.latex.outputs.release_tag }}"
           echo "Release URL: ${{ steps.latex.outputs.release_url }}"
-          
+
       - name: Notify success
         if: success()
         run: |
@@ -114,8 +114,8 @@ jobs:
   dev-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v5.0.0
+
       - name: Build for development
         uses: AlaCodon/latexonfly@main
         with:
@@ -135,8 +135,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v5.0.0
+
       - name: Build with bibliography
         uses: AlaCodon/latexonfly@main
         with:
@@ -156,19 +156,19 @@ jobs:
     entry_tex: "main.tex"                    # Main LaTeX file
     engine: "pdflatex"                       # pdflatex, xelatex, lualatex
     working_directory: "."                   # Directory with LaTeX files
-    
+
     # TeX Live configuration
     texlive_scheme: "basic"                  # basic, minimal, full
     texlive_mirror: "https://mirror.ctan.org/systems/texlive/tlnet"
     cache_key_suffix: ""                     # For custom cache keys
     timeout_minutes: "30"                    # Job timeout
-    
+
     # Release configuration
     create_release: "true"                   # Create GitHub releases
     release_tag_prefix: "rel"               # Prefix for release tags
     push_to_releases_branch: "true"         # Push to releases branch
     releases_branch_name: "releases"        # Name of releases branch
-    
+
     # Artifact configuration
     artifact_name: "latex-pdfs"            # Name for PDF artifacts
     keep_build_deps: "false"                # Upload TeX package list

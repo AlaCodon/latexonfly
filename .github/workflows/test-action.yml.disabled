@@ -14,8 +14,8 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        
+        uses: actions/checkout@v5.0.0
+
       - name: Test LaTeX Build Action
         id: latex_build
         uses: ./
@@ -25,14 +25,14 @@ jobs:
           create_release: false  # Don't create releases for tests
           push_to_releases_branch: false
           keep_build_artifacts: true
-          
+
       - name: Verify outputs
         run: |
           echo "Generated PDFs: ${{ steps.latex_build.outputs.pdf_files }}"
           echo "PDF files exist:"
           ls -la *.pdf || echo "No PDF files found in root"
           ls -la ./*.pdf || echo "No PDF files found in current directory"
-          
+
       - name: Check if PDF was created
         run: |
           if [ -f "main.pdf" ]; then

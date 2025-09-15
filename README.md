@@ -22,8 +22,8 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        
+        uses: actions/checkout@v5.0.0
+
       - name: Build LaTeX documents
         uses: AlaCodon/latexonfly@main
         with:
@@ -78,15 +78,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v5.0.0
+
       - name: Build LaTeX
         id: latex
         uses: AlaCodon/latexonfly@main
         with:
           entry_tex: "main.tex"
           engine: "pdflatex"
-          
+
       - name: Use outputs
         run: |
           echo "Generated PDFs: ${{ steps.latex.outputs.pdf_files }}"
