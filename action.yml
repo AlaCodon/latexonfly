@@ -110,7 +110,8 @@ runs:
 
     # Cache the TeX Live install + user trees
     - name: Restore TeX Live cache
-      uses: actions/cache@v4.2.4
+      id: cache-restore
+      uses: actions/cache/restore@v4.2.4
       with:
         path: |
           ${{ env.TL_ROOT }}
@@ -119,8 +120,9 @@ runs:
           ~/texmf
         # Stable key to enable iterative package accumulation across runs.
         # Includes OS, scheme, and optional manual suffix for targeted busts.
-        key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ inputs.cache_key_suffix }}
+        key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ inputs.cache_key_suffix }}-${{ github.run_id }}
         restore-keys: |
+          texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ inputs.cache_key_suffix }}-
           texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-
           texlive-${{ runner.os }}-
 
@@ -299,6 +301,34 @@ runs:
         set -euxo pipefail
         tlmgr info --only-installed --data name | sort > texlive.packages.txt || true
         wc -l texlive.packages.txt || true
+
+    # Compute a stable fingerprint of installed TeX Live state
+    - name: Compute TeX Live package hash
+      id: pkg-hash
+      shell: bash
+      run: |
+        set -euo pipefail
+        TLPDB="${TL_ROOT}/tlpkg/texlive.tlpdb"
+        if [ -f "$TLPDB" ]; then
+          HASH=$(sha256sum "$TLPDB" | cut -d' ' -f1)
+        else
+          # Fallback: names list if tlpdb is missing
+          HASH=$(sha256sum texlive.packages.txt | cut -d' ' -f1)
+        fi
+        echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+        
+    # Save: only creates a new cache when the hash changed; harmless if the key exists
+    - name: Save TeX Live cache
+      if: always()
+      continue-on-error: true
+      uses: actions/cache/restore@v4.2.4
+      with:
+        path: |
+          ${{ env.TL_ROOT }}
+          ${{ runner.temp }}/texlive-installer
+          ~/.texlive*
+          ~/texmf
+        key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ inputs.cache_key_suffix }}-${{ steps.pkg-hash.outputs.hash }}
 
     - name: Upload build deps
       if: inputs.keep_build_deps == 'true'
