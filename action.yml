@@ -173,7 +173,7 @@ runs:
         EOF
 
           # Run installer
-          ./install-tl -profile /tmp/texlive.profile
+          ./install-tl -profile /tmp/texlive.profile -repository "${{ env.TL_MIRROR }}"
 
           # Discover bin dir after installation
           TL_BIN_DIR=$(find "${TL_ROOT}/bin" -mindepth 1 -maxdepth 1 -type d | head -n1)
