@@ -381,27 +381,30 @@ runs:
       run: |
         set -euxo pipefail
         mkdir -p ./dist
+        mkdir -p ./preview
         shopt -s nullglob
         for f in ./*.pdf; do
           if [ -f "$f" ]; then
             bn="$(basename "$f")"
             base="${bn%.pdf}"
             cp "$f" "./dist/${base}-${TAG_NAME}.pdf"
-            cp "$f" "./dist/${base}.pdf"
+            cp "$f" "./preview/${base}.pdf"
+          fi
+        done
+        for f in ./*.bbl; do
+          if [ -f "$f" ]; then
+            bn="$(basename "$f")"
+            base="${bn%.bbl}"
+            cp "$f" "./dist/${base}-${TAG_NAME}.bbl"
+            cp "$f" "./preview/${base}.bbl"
           fi
         done
 
         # Count and list files
         cd ./dist
-        if ls *.pdf 1> /dev/null 2>&1; then
-          echo "RELEASE_FILES=$(ls *.pdf | tr '\n' ' ')" >> "$GITHUB_ENV"
-          echo "Generated release files:"
-          ls -la *.pdf
-        else
-          echo "No PDF files found for release"
-          echo "RELEASE_FILES=" >> "$GITHUB_ENV"
-        fi
-
+        files=( * )
+        all_files="${files[*]}"
+        echo "RELEASE_FILES=$all_files" >> "$GITHUB_ENV"
 
     - name: Create GitHub Release
       if: inputs.create_release == 'true' && env.RELEASE_FILES != ''
@@ -418,7 +421,7 @@ runs:
           --target "$GITHUB_SHA" \
           --generate-notes \
           --latest \
-          *.pdf | tail -n1)
+          * | tail -n1)
         echo "url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
 
     - name: Push PDF to releases branch
@@ -441,11 +444,13 @@ runs:
           find . -maxdepth 1 -type f -delete 2>/dev/null || true
         fi
 
-        cp dist/*.pdf ./ 2>/dev/null || true
-        if ls *.pdf 1> /dev/null 2>&1; then
-          git add *.pdf
-          git commit -m "$TAG_NAME: $RELEASE_NAME"
-          git push origin HEAD:"$BRANCH_NAME"
-        else
-          echo "No PDF files to push to releases branch"
-        fi
+        find dist preview -type f | while read -r file; do 
+            # Get the basename (filename only)
+            base=$(basename "$file")
+            # Copy to top-level
+            cp "$file" "$base"
+            git add "$base"
+        done
+        git commit -m "$TAG_NAME: $RELEASE_NAME"
+        git push origin HEAD:"$BRANCH_NAME"
+        
