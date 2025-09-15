@@ -118,6 +118,9 @@ runs:
           ~/.texlive*
           ~/texmf
         key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ hashFiles(format('{0}/**/*.tex', inputs.working_directory), format('{0}/**/*.sty', inputs.working_directory), format('{0}/**/*.cls', inputs.working_directory), format('{0}/**/*.bib', inputs.working_directory)) }}${{ inputs.cache_key_suffix }}
+        restore-keys: |
+          texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-
+          texlive-${{ runner.os }}-
 
     # Install TeX Live if not cached
     - name: Install TeX Live
@@ -185,7 +188,7 @@ runs:
     #       /tmp/texlive.profile.resolved
     #     if-no-files-found: warn
     #     retention-days: 7
-        
+
     - name: Check entry TeX file exists
       id: check_entry
       shell: bash
@@ -199,7 +202,7 @@ runs:
           echo "No TeX entry file found at: ${ENTRY_TEX}"
           echo "tex_exists=false" >> "$GITHUB_OUTPUT"
         fi
-        
+
     - name: Bootstrap tlmgr and minimal tools
       shell: bash
       run: |
