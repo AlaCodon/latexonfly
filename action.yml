@@ -117,7 +117,9 @@ runs:
           ${{ runner.temp }}/texlive-installer
           ~/.texlive*
           ~/texmf
-        key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ hashFiles(format('{0}/**/*.tex', inputs.working_directory), format('{0}/**/*.sty', inputs.working_directory), format('{0}/**/*.cls', inputs.working_directory), format('{0}/**/*.bib', inputs.working_directory)) }}${{ inputs.cache_key_suffix }}
+        # Stable key to enable iterative package accumulation across runs.
+        # Includes OS, scheme, and optional manual suffix for targeted busts.
+        key: texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-${{ inputs.cache_key_suffix }}
         restore-keys: |
           texlive-${{ runner.os }}-${{ inputs.texlive_scheme }}-
           texlive-${{ runner.os }}-
