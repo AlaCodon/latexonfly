@@ -1,0 +1,105 @@
+# Example: Full-Featured LaTeX CI with Releases
+# This example shows how to use the basic reusable workflow and add
+# release automation and advanced artifact management on top.
+
+name: Full-Featured LaTeX CI
+
+on:
+  push:
+    branches: [main, release]
+  pull_request:
+    branches: [main]
+
+env:
+  # Configuration
+  CREATE_RELEASE: true
+  RELEASE_TAG_PREFIX: "rel"
+  PUSH_TO_RELEASES_BRANCH: true
+  RELEASES_BRANCH_NAME: "releases"
+  ARTIFACT_NAME: "latex-pdfs"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Build LaTeX documents
+        id: latex
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "main.tex"
+          engine: "pdflatex"
+          texlive_scheme: "basic"
+          keep_build_deps: "${{ env.CREATE_RELEASE }}"  # Enable debugging for releases
+
+      - name: Prepare release artifacts
+        if: ${{ env.CREATE_RELEASE == 'true' && github.ref == 'refs/heads/main' }}
+        id: meta
+        run: |
+          TITLE="$(git log -1 --pretty=%s)"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          TAG="${{ env.RELEASE_TAG_PREFIX }}-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          
+          # Find generated PDFs and prepare for release
+          mkdir -p dist
+          find . -name "*.pdf" -type f -exec cp {} dist/ \;
+          
+          # Rename PDFs with tag
+          cd dist
+          for f in *.pdf; do
+            if [ -f "$f" ]; then
+              base="${f%.pdf}"
+              mv "$f" "${base}-${TAG}.pdf"
+            fi
+          done
+
+      - name: Create GitHub Release
+        if: ${{ env.CREATE_RELEASE == 'true' && github.ref == 'refs/heads/main' }}
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.title }}
+        run: |
+          cd dist
+          if ls *.pdf 1> /dev/null 2>&1; then
+            gh release create "$TAG_NAME" \
+              --title "$RELEASE_NAME" \
+              --target "$GITHUB_SHA" \
+              --generate-notes \
+              --latest \
+              *.pdf
+          fi
+
+      - name: Push PDF to releases branch
+        if: ${{ env.PUSH_TO_RELEASES_BRANCH == 'true' && env.CREATE_RELEASE == 'true' && github.ref == 'refs/heads/main' }}
+        env:
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.title }}
+          BRANCH_NAME: ${{ env.RELEASES_BRANCH_NAME }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
+            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
+            git switch "$BRANCH_NAME"
+          else
+            git checkout --orphan "$BRANCH_NAME"
+            git rm -rf . 2>/dev/null || true
+            find . -maxdepth 1 -type f -delete 2>/dev/null || true
+          fi
+
+          cp dist/*.pdf ./ 2>/dev/null || true
+          if ls *.pdf 1> /dev/null 2>&1; then
+            git add *.pdf
+            git commit -m "$TAG_NAME: $RELEASE_NAME"
+            git push origin HEAD:"$BRANCH_NAME"
+          fi

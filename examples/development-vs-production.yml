@@ -16,34 +16,75 @@ jobs:
   development-build:
     name: Development Build
     if: github.ref != 'refs/heads/main'
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "main.tex"
-      engine: "pdflatex"
-      texlive_scheme: "basic"             # Faster installation
-      create_release: false               # No releases for dev builds
-      push_to_releases_branch: false      # No branch pollution
-      keep_build_artifacts: true          # Keep logs for debugging
-      artifact_name: "dev-build-pdf"
-      cache_key_suffix: "-dev"            # Separate cache for dev
-      timeout_minutes: 20                 # Shorter timeout for quick feedback
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+
+      - name: Build for development
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "main.tex"
+          engine: "pdflatex"
+          texlive_scheme: "basic"             # Faster installation
+          keep_build_deps: "true"             # Enable debugging
+          cache_key_suffix: "-dev"            # Separate cache for dev
+          timeout_minutes: "20"               # Shorter timeout for quick feedback
 
   # Production build for main branch
   production-build:
     name: Production Build
     if: github.ref == 'refs/heads/main'
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "main.tex"
-      engine: "pdflatex"
-      texlive_scheme: "full"              # Full TeX Live for production
-      create_release: true                # Create official releases
-      release_tag_prefix: "v"             # Version tags
-      push_to_releases_branch: true       # Maintain releases branch
-      keep_build_artifacts: false         # Clean production artifacts
-      artifact_name: "production-pdf"
-      timeout_minutes: 60                 # Allow time for full build
+    runs-on: ubuntu-latest
     permissions:
       contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Build for production
+        id: latex
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "main.tex"
+          engine: "pdflatex"
+          texlive_scheme: "full"              # Full TeX Live for production
+          timeout_minutes: "60"               # Allow time for full build
+
+  # Create release only for production builds
+  create-production-release:
+    if: github.ref == 'refs/heads/main'
+    needs: production-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Download PDF artifacts
+        uses: actions/download-artifact@v4.1.8
+        with:
+          name: latex-pdfs
+          path: ./pdfs
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          TITLE="$(git log -1 --pretty=%s)"
+          
+          cd pdfs
+          if ls *.pdf 1> /dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "$TITLE" \
+              --target "$GITHUB_SHA" \
+              --generate-notes \
+              --latest \
+              *.pdf
+          fi

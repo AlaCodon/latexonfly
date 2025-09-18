@@ -1,6 +1,6 @@
 # LaTeX Build Action
 
-**A comprehensive GitHub Action for building LaTeX documents with automatic package management, intelligent caching, and release automation.**
+**A comprehensive GitHub Action for building LaTeX documents with automatic package management and intelligent caching.**
 
 ## 🚀 Key Features
 
@@ -8,8 +8,7 @@
 - **Smart package detection** - Automatically installs biblatex, minted, glossaries, and TikZ packages
 - **Multi-engine support** - Compatible with pdflatex, xelatex, and lualatex
 - **Intelligent caching** - Dramatically speeds up builds by caching TeX Live installation
-- **Automatic releases** - Creates GitHub releases with tagged PDF artifacts
-- **Flexible configuration** - 14+ input parameters for customization
+- **Flexible configuration** - 8 input parameters for customization
 - **Production ready** - Used in production with comprehensive error handling
 
 ## 📖 Quick Start
@@ -48,17 +47,13 @@ jobs:
     entry_tex: "thesis.tex"
     engine: "xelatex"
     texlive_scheme: "full"
-    create_release: true
-    release_tag_prefix: "v"
-    keep_build_artifacts: true
+    keep_build_deps: "true"
 ```
 
 ## 📊 Outputs
 
-The action provides outputs you can use in subsequent steps:
+The action provides this output you can use in subsequent steps:
 - `pdf_files` - List of generated PDF files
-- `release_tag` - Created release tag
-- `release_url` - URL of the created release
 
 ---
 

@@ -5,20 +5,27 @@ This directory contains example workflows demonstrating different use cases for 
 
 ## Available Examples
 
-### 1. Multi-Document Project (`multi-document-project.yml`)
+### 1. Full-Featured Workflow (`full-featured-workflow.yml`)
+**Use case**: Projects that need release automation and advanced artifact management
+- Uses the basic reusable workflow for compilation
+- Adds GitHub releases with tagged PDF artifacts
+- Pushes PDFs to releases branch for easy access
+- Demonstrates how to extend the basic functionality
+
+### 2. Multi-Document Project (`multi-document-project.yml`)
 **Use case**: Projects with multiple documents (thesis, slides, poster)
 - Builds multiple documents in parallel
 - Different engines and configurations per document
 - Optional combined release with all PDFs
 - Separate release branches for different document types
 
-### 2. Development vs Production (`development-vs-production.yml`)
+### 3. Development vs Production (`development-vs-production.yml`)
 **Use case**: Different behavior for development and production builds
 - Development: Fast builds, debugging artifacts, no releases
 - Production: Full TeX Live, official releases, optimized builds
 - Branch-based conditional logic
 
-### 3. Complex Academic Document (`complex-document-with-bibliography.yml`)
+### 4. Complex Academic Document (`complex-document-with-bibliography.yml`)
 **Use case**: Academic papers with bibliography, supplementary materials
 - Full TeX Live installation for complex documents
 - Separate supplementary materials build

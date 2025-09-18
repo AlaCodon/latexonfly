@@ -1,10 +1,10 @@
 # LaTeX Build Action
 
-This repository provides both a reusable GitHub Actions workflow and a GitHub Action for building LaTeX documents with automatic package management, caching, and release automation.
+This repository provides a GitHub Action for building LaTeX documents with automatic package management and caching.
 
 ## 📦 Using as a GitHub Action
 
-You can use this as a GitHub Action in your workflow:
+You can use this as a GitHub Action in your workflow for basic LaTeX compilation:
 
 ```yaml
 name: Build LaTeX Documents
@@ -18,8 +18,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5.0.0
@@ -29,31 +27,6 @@ jobs:
         with:
           entry_tex: "main.tex"
           engine: "pdflatex"
-          create_release: true
-          release_tag_prefix: "v"
-```
-
-## 🔄 Using as a Reusable Workflow
-
-You can also use this as a reusable workflow:
-
-```yaml
-name: Build LaTeX Documents
-
-on:
-  push:
-    branches: [main, release]
-  pull_request:
-    branches: [main]
-
-jobs:
-  build:
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    permissions:
-      contents: write
-    with:
-      entry_tex: "main.tex"
-      engine: "pdflatex"
 ```
 
 ## Features
@@ -62,21 +35,19 @@ jobs:
 - 📦 **Smart package detection** and on-demand installation for biber, glossaries, minted, and tikz externalization
 - ⚡ **Intelligent caching** of TeX Live installation and packages for faster builds
 - 🎯 **Multi-engine support** (pdflatex, xelatex, lualatex)
-- 📋 **GitHub Releases** with automatic tagging and PDF artifacts
-- 🌿 **Releases branch** for easy PDF access and history
-- 🔧 **Highly configurable** inputs for different project needs
-- 🛠️ **Build artifact support** for debugging
+- 🔧 **Configurable** inputs for different project needs
+- 🛠️ **Package debugging** support
+
+> **Note**: For advanced features like GitHub releases and custom artifact management, see the [full-featured example](examples/full-featured-workflow.yml).
 
 ## Advanced Examples
 
-### Using as GitHub Action with Multiple Outputs
+### Using as GitHub Action with Outputs
 
 ```yaml
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v5.0.0
 
@@ -90,31 +61,6 @@ jobs:
       - name: Use outputs
         run: |
           echo "Generated PDFs: ${{ steps.latex.outputs.pdf_files }}"
-          echo "Release tag: ${{ steps.latex.outputs.release_tag }}"
-          echo "Release URL: ${{ steps.latex.outputs.release_url }}"
-```
-
-## Quick Start (Reusable Workflow)
-
-For backward compatibility, you can still use this as a reusable workflow in your LaTeX project by creating a workflow file at `.github/workflows/latex-ci.yml`:
-
-```yaml
-name: Build LaTeX Documents
-
-on:
-  push:
-    branches: [main, release]
-  pull_request:
-    branches: [main]
-
-jobs:
-  build:
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    permissions:
-      contents: write
-    with:
-      entry_tex: "main.tex"
-      engine: "pdflatex"
 ```
 
 ## Configuration Options
@@ -133,120 +79,54 @@ jobs:
 |-------|-------------|---------|----------|
 | `texlive_scheme` | TeX Live scheme (`basic`, `minimal`, `full`) | `basic` | No |
 | `texlive_mirror` | TeX Live mirror URL | `https://mirror.ctan.org/systems/texlive/tlnet` | No |
-| `cache_key_suffix` | Additional suffix for cache key | `""` | No |
-
-### Release Configuration
-
-| Input | Description | Default | Required |
-|-------|-------------|---------|----------|
-| `create_release` | Whether to create GitHub releases | `true` | No |
-| `release_tag_prefix` | Prefix for release tags | `rel` | No |
-| `push_to_releases_branch` | Push PDFs to releases branch | `true` | No |
-| `releases_branch_name` | Name of the releases branch | `releases` | No |
 
 ### Build Configuration
 
 | Input | Description | Default | Required |
 |-------|-------------|---------|----------|
 | `timeout_minutes` | Job timeout in minutes | `30` | No |
-| `artifact_name` | Name for PDF artifacts | `latex-pdfs` | No |
-| `keep_build_artifacts` | Upload build logs for debugging | `false` | No |
+| `cache_key_suffix` | Additional suffix for cache key | `""` | No |
+| `keep_build_deps` | Upload build deps for debugging | `false` | No |
 
 ## Outputs
 
-The workflow provides these outputs that you can use in subsequent jobs:
+The action provides this output that you can use in subsequent steps:
 
 | Output | Description |
 |--------|-------------|
 | `pdf_files` | Space-separated list of generated PDF files |
-| `release_tag` | Created release tag (if `create_release` is true) |
-| `release_url` | URL of the created release |
 
 ### Using Outputs Example
 
 ```yaml
 jobs:
   build:
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "main.tex"
-    permissions:
-      contents: write
-
-  notify:
-    needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Print release info
+      - uses: actions/checkout@v5.0.0
+
+      - name: Build LaTeX
+        id: latex
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "main.tex"
+
+      - name: Use outputs
         run: |
-          echo "Generated PDFs: ${{ needs.build.outputs.pdf_files }}"
-          echo "Release tag: ${{ needs.build.outputs.release_tag }}"
-          echo "Release URL: ${{ needs.build.outputs.release_url }}"
+          echo "Generated PDFs: ${{ steps.latex.outputs.pdf_files }}"
+```
 ```
 
 ## Advanced Examples
 
-### Multi-Document Project
+## Advanced Examples
 
-```yaml
-name: Build All Documents
+For more complex use cases, see the [examples directory](examples/):
 
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build-thesis:
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "thesis.tex"
-      working_directory: "thesis"
-      artifact_name: "thesis-pdf"
-      release_tag_prefix: "thesis"
-    permissions:
-      contents: write
-
-  build-slides:
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "slides.tex"
-      working_directory: "slides"
-      artifact_name: "slides-pdf"
-      create_release: false  # Only release thesis
-    permissions:
-      contents: write
-```
-
-### XeLaTeX with Full TeX Live
-
-```yaml
-jobs:
-  build:
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "document.tex"
-      engine: "xelatex"
-      texlive_scheme: "full"  # For projects with many packages
-      timeout_minutes: 60     # Longer timeout for full install
-    permissions:
-      contents: write
-```
-
-### Development Build with Debugging
-
-```yaml
-jobs:
-  build:
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "main.tex"
-      create_release: false          # No releases for dev builds
-      push_to_releases_branch: false
-      keep_build_artifacts: true     # Keep logs for debugging
-      cache_key_suffix: "-dev"       # Separate cache for dev
-    permissions:
-      contents: write
-```
+- **[Full-Featured Workflow](examples/full-featured-workflow.yml)**: Complete example with release automation
+- **[Multi-Document Project](examples/multi-document-project.yml)**: Building multiple documents in parallel
+- **[Development vs Production](examples/development-vs-production.yml)**: Different configs for different environments
+- **[Complex Academic Document](examples/complex-document-with-bibliography.yml)**: Academic papers with submission packages
 
 ## Automatic Package Detection
 
@@ -283,9 +163,10 @@ permissions:
 
 ### Build Fails with Missing Packages
 
-1. Set `keep_build_artifacts: true` to see the build logs
+1. Set `keep_build_deps: "true"` to see the installed TeX packages list
 2. Consider using `texlive_scheme: "full"` for complex documents
 3. Check if your document uses packages not detected automatically
+4. For release automation and additional features, see the [full-featured workflow example](examples/full-featured-workflow.yml)
 
 ### Cache Issues
 

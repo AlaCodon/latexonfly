@@ -13,44 +13,93 @@ on:
 jobs:
   build-thesis:
     name: Build Thesis
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "thesis.tex"
-      working_directory: "thesis"
-      engine: "xelatex"                   # Thesis often needs XeLaTeX for fonts
-      texlive_scheme: "full"              # Thesis may need many packages
-      release_tag_prefix: "thesis"        # Tag releases as thesis-YYYYMMDD-...
-      artifact_name: "thesis-pdf"
-      timeout_minutes: 45                 # Longer timeout for complex thesis
+    runs-on: ubuntu-latest
     permissions:
       contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+
+      - name: Build thesis
+        id: thesis
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "thesis.tex"
+          working_directory: "thesis"
+          engine: "xelatex"                   # Thesis often needs XeLaTeX for fonts
+          texlive_scheme: "full"              # Thesis may need many packages
+          timeout_minutes: "45"               # Longer timeout for complex thesis
 
   build-slides:
     name: Build Presentation Slides
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "slides.tex"
-      working_directory: "slides"
-      engine: "pdflatex"                  # Slides usually fine with pdflatex
-      create_release: false               # Don't create releases for slides
-      push_to_releases_branch: true       # But do save to releases branch
-      releases_branch_name: "slides"      # Separate branch for slides
-      artifact_name: "slides-pdf"
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+
+      - name: Build slides
+        id: slides
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "slides.tex"
+          working_directory: "slides"
+          engine: "pdflatex"                  # Slides usually fine with pdflatex
 
   build-poster:
     name: Build Conference Poster
-    uses: AlaCodon/latexonfly/.github/workflows/latex-ci.yml@main
-    with:
-      entry_tex: "poster.tex"
-      working_directory: "poster"
-      engine: "lualatex"                  # Poster might need LuaLaTeX
-      create_release: false
-      push_to_releases_branch: false      # Don't save posters to branch
-      artifact_name: "poster-pdf"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+
+      - name: Build poster
+        id: poster
+        uses: AlaCodon/latexonfly@main
+        with:
+          entry_tex: "poster.tex"
+          working_directory: "poster"
+          engine: "lualatex"                  # Poster might need LuaLaTeX
+
+  # Release only the thesis with custom tagging
+  release-thesis:
+    if: github.ref == 'refs/heads/main'
+    needs: build-thesis
+    runs-on: ubuntu-latest
     permissions:
       contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Download thesis PDF
+        uses: actions/download-artifact@v4.1.8
+        with:
+          name: latex-pdfs
+          path: ./thesis-pdfs
+
+      - name: Create thesis release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="thesis-$(date -u +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}"
+          TITLE="$(git log -1 --pretty=%s)"
+          
+          cd thesis-pdfs
+          if ls *.pdf 1> /dev/null 2>&1; then
+            # Rename PDFs with thesis prefix
+            for f in *.pdf; do
+              mv "$f" "thesis-$f"
+            done
+            
+            gh release create "$TAG" \
+              --title "Thesis: $TITLE" \
+              --target "$GITHUB_SHA" \
+              --generate-notes \
+              --latest \
+              *.pdf
+          fi
 
   # Optional: Combine all PDFs into a single release
   create-combined-release:

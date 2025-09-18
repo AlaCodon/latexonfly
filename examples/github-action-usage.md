@@ -2,6 +2,8 @@
 
 This example shows how to use the LaTeX Build Action in your repository.
 
+> **Note**: For release automation and additional features, see the [full-featured workflow example](full-featured-workflow.yml).
+
 ## Basic Usage
 
 Create `.github/workflows/latex.yml` in your repository:
@@ -29,8 +31,6 @@ jobs:
         with:
           entry_tex: "main.tex"
           engine: "pdflatex"
-          create_release: true
-          release_tag_prefix: "v"
 ```
 
 ## Advanced Usage with Multiple Documents
@@ -57,13 +57,9 @@ jobs:
           working_directory: "thesis"
           engine: "xelatex"
           texlive_scheme: "full"
-          artifact_name: "thesis-pdf"
-          release_tag_prefix: "thesis"
 
   build-slides:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v5.0.0
 
@@ -73,8 +69,6 @@ jobs:
           entry_tex: "slides.tex"
           working_directory: "slides"
           engine: "pdflatex"
-          create_release: false  # Only release thesis
-          artifact_name: "slides-pdf"
 ```
 
 ## Using Outputs
@@ -97,14 +91,12 @@ jobs:
       - name: Process outputs
         run: |
           echo "Generated PDFs: ${{ steps.latex.outputs.pdf_files }}"
-          echo "Release tag: ${{ steps.latex.outputs.release_tag }}"
-          echo "Release URL: ${{ steps.latex.outputs.release_url }}"
 
       - name: Notify success
         if: success()
         run: |
           echo "LaTeX compilation successful!"
-          echo "PDFs available at: ${{ steps.latex.outputs.release_url }}"
+          echo "PDFs: ${{ steps.latex.outputs.pdf_files }}"
 ```
 
 ## Development Build (No Releases)
@@ -120,9 +112,7 @@ jobs:
         uses: AlaCodon/latexonfly@main
         with:
           entry_tex: "main.tex"
-          create_release: false
-          push_to_releases_branch: false
-          keep_build_artifacts: true  # For debugging
+          keep_build_deps: "true"  # For debugging
           cache_key_suffix: "-dev"
 ```
 
@@ -143,7 +133,7 @@ jobs:
           entry_tex: "paper.tex"
           engine: "pdflatex"
           texlive_scheme: "basic"  # biblatex detected automatically
-          timeout_minutes: 45
+          timeout_minutes: "45"
 ```
 
 ## All Available Inputs
@@ -163,14 +153,6 @@ jobs:
     cache_key_suffix: ""                     # For custom cache keys
     timeout_minutes: "30"                    # Job timeout
 
-    # Release configuration
-    create_release: "true"                   # Create GitHub releases
-    release_tag_prefix: "rel"               # Prefix for release tags
-    push_to_releases_branch: "true"         # Push to releases branch
-    releases_branch_name: "releases"        # Name of releases branch
-
-    # Artifact configuration
-    artifact_name: "latex-pdfs"            # Name for PDF artifacts
-    keep_build_deps: "false"                # Upload TeX package list
-    keep_build_artifacts: "false"           # Upload build logs
+    # Build configuration
+    keep_build_deps: "false"                # Upload TeX package list for debugging
 ```
