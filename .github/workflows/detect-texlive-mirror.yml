@@ -2,8 +2,6 @@ name: Probe TeX Live mirrors (inline)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "15 3 * * *" # daily at 03:15 UTC
 
 jobs:
   probe:
