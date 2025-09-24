@@ -73,7 +73,7 @@ runs:
     # Cache the TeX Live install + user trees
     - name: Restore TeX Live cache
       id: cache-restore
-      uses: actions/cache/restore@v4.2.4
+      uses: actions/cache/restore@v4.3.0
       with:
         path: |
           ${{ env.TL_ROOT }}
@@ -283,7 +283,7 @@ runs:
     - name: Save TeX Live cache
       if: always()
       continue-on-error: true
-      uses: actions/cache/save@v4.2.4
+      uses: actions/cache/save@v4.3.0
       with:
         path: |
           ${{ env.TL_ROOT }}
