@@ -129,7 +129,7 @@ jobs:
           echo "Per-mirror data written to mirror_probe.csv"
 
       - name: Upload artifacts (per-mirror data and selection)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: texlive-mirror-probe
           path: |
